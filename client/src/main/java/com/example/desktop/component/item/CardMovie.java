@@ -14,20 +14,18 @@ public class CardMovie extends JPanel {
     private final JLabel posterLabel = new JLabel();
     private final JLabel titleLabel  = new JLabel();
 
-    // màu & kích thước mặc định
-    private static final Color BG            = new Color(25, 25, 28);
-    private static final Color FG            = new Color(223, 225, 229);
+    private static final Color BG            = new Color(229,227,217);
+    private static final Color FG            = new Color(0, 0, 0);
     private static final Color HOVER_BORDER  = new Color(90, 126, 255);
     private static final Color NORMAL_BORDER = new Color(60, 60, 65);
-    private static final Dimension POSTER_SIZE = new Dimension(160, 220);
+    private static final Dimension POSTER_SIZE = new Dimension(160, 240);
 
     public CardMovie() {
         setOpaque(true);
         setBackground(BG);
         setLayout(new BorderLayout(0, 6));
-        setBorder(new EmptyBorder(8, 8, 8, 8));         // padding xung quanh
+        setBorder(new EmptyBorder(8, 8, 8, 8));
 
-        // ===== Poster =====
         posterLabel.setHorizontalAlignment(SwingConstants.CENTER);
         posterLabel.setVerticalAlignment(SwingConstants.CENTER);
         posterLabel.setPreferredSize(POSTER_SIZE);
@@ -36,7 +34,6 @@ public class CardMovie extends JPanel {
         posterLabel.setBorder(new LineBorder(NORMAL_BORDER, 1, true));
         posterLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Hover viền cho poster
         posterLabel.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) {
                 posterLabel.setBorder(new LineBorder(HOVER_BORDER, 2, true));
@@ -46,7 +43,6 @@ public class CardMovie extends JPanel {
             }
         });
 
-        // ===== Title =====
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
         titleLabel.setForeground(FG);
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 14f));
@@ -56,19 +52,16 @@ public class CardMovie extends JPanel {
         add(titleLabel,  BorderLayout.SOUTH);
     }
 
-    /** Set dữ liệu poster + tiêu đề */
     public void setMovieData(Image image, String title) {
         titleLabel.setText(title);
         posterLabel.setIcon(new ImageIcon(scaleToFit(image, POSTER_SIZE)));
     }
 
-    /** Cho phép thay icon trực tiếp nếu đã có dạng Icon */
     public void setMovieData(Icon posterIcon, String title) {
         titleLabel.setText(title);
         posterLabel.setIcon(posterIcon);
     }
 
-    /** API cho click vào poster (ví dụ mở chi tiết) */
     public void onPosterClick(Runnable action) {
         for (MouseListener ml : posterLabel.getMouseListeners()) {
             // giữ nguyên listener hover; chỉ thêm click
@@ -80,7 +73,6 @@ public class CardMovie extends JPanel {
         });
     }
 
-    // --- Utils ---
     private static Image scaleToFit(Image src, Dimension target) {
         int tw = target.width, th = target.height;
         int sw = src.getWidth(null), sh = src.getHeight(null);

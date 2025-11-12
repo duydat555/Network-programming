@@ -13,6 +13,12 @@ public class Test {
     private static JLabel timeLabel;
     private static JSlider seekBar;
     private static Timer timer;
+    private static JButton playButton;
+
+    private static String ipAddress = "172.20.10.4";
+    private static int port = 8080;
+    private static String videoPath = "/hls/movie1/1080p/avatar2.m3u8";
+    private static String videoURL = "http://" + ipAddress + ":" + port + videoPath;
 
     public static void main(String[] args) {
         try {
@@ -44,14 +50,13 @@ public class Test {
 
             JButton openButton = new JButton("Open URL/File");
             JButton rewindButton = new JButton("⏪");
-            JButton playButton = new JButton("▶");
+            playButton = new JButton("⏸");
             JButton fastForwardButton = new JButton("⏩");
             timeLabel = new JLabel("00:00 / 00:00");
             seekBar = new JSlider(JSlider.HORIZONTAL, 0, 1000, 0);
             seekBar.setPreferredSize(new Dimension(600, 20));
             seekBar.setBackground(new Color(20, 20, 20));
             seekBar.setForeground(Color.WHITE);
-            seekBar.setEnabled(false); // Enable when media is playing
 
             JButton volumeButton = new JButton("🔊");
             JSlider volumeSlider = new JSlider(JSlider.HORIZONTAL, 0, 100, 50);
@@ -66,7 +71,6 @@ public class Test {
                     mediaPlayerComponent.mediaPlayer().controls().play();
                     playButton.setText("⏸");
                     startTimeUpdate();
-                    seekBar.setEnabled(true);
                 }
             });
 
@@ -83,6 +87,17 @@ public class Test {
 
             volumeSlider.addChangeListener(e -> {
                 mediaPlayerComponent.mediaPlayer().audio().setVolume(volumeSlider.getValue());
+            });
+
+            // Seek bar listener
+            seekBar.addChangeListener(e -> {
+                if (!seekBar.getValueIsAdjusting()) {
+                    return;
+                }
+                if (seekBar.isEnabled()) {
+                    long newTime = seekBar.getValue();
+                    mediaPlayerComponent.mediaPlayer().controls().setTime(newTime);
+                }
             });
 
             // Open URL/File button action
@@ -102,6 +117,7 @@ public class Test {
                         File selectedFile = fileChooser.getSelectedFile();
                         mediaPlayerComponent.mediaPlayer().media().prepare(selectedFile.getAbsolutePath());
                         mediaPlayerComponent.mediaPlayer().controls().play();
+                        playButton.setText("⏸");
                         startTimeUpdate();
                         seekBar.setEnabled(true);
                     }
@@ -112,6 +128,7 @@ public class Test {
                         try {
                             mediaPlayerComponent.mediaPlayer().media().prepare(url);
                             mediaPlayerComponent.mediaPlayer().controls().play();
+                            playButton.setText("⏸");
                             startTimeUpdate();
                             seekBar.setEnabled(true);
                         } catch (Exception ex) {
@@ -160,10 +177,28 @@ public class Test {
                 updateTimeLabel(currentTime, duration);
                 if (duration > 0) {
                     seekBar.setMaximum((int) duration);
-                    seekBar.setValue((int) currentTime);
+                    if (!seekBar.getValueIsAdjusting()) {
+                        seekBar.setValue((int) currentTime);
+                    }
                 }
             });
             timer.setRepeats(true);
+
+            // Auto-play video from URL after frame is visible
+            SwingUtilities.invokeLater(() -> {
+                try {
+                    mediaPlayerComponent.mediaPlayer().media().prepare(videoURL);
+                    mediaPlayerComponent.mediaPlayer().controls().play();
+                    playButton.setText("⏸");
+                    startTimeUpdate();
+                    seekBar.setEnabled(true);
+                } catch (Exception ex) {
+                    System.err.println("Error auto-playing video: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(frame,
+                            "Could not auto-play video from URL: " + videoURL + "\n" + ex.getMessage(),
+                            "Auto-play Error", JOptionPane.WARNING_MESSAGE);
+                }
+            });
         });
     }
 

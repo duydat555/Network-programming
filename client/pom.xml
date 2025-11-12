@@ -29,33 +29,35 @@
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf</artifactId>
-            <version>3.5</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.formdev</groupId>
-            <artifactId>flatlaf-extras</artifactId>
-            <version>3.2.5</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.miglayout</groupId>
-            <artifactId>miglayout-swing</artifactId>
-            <version>11.2</version>
-        </dependency>
-
-        <dependency>
-            <groupId>raven.popup</groupId>
-            <artifactId>swing-glasspane-popup</artifactId>
-            <version>1.5.1</version>
-            <scope>system</scope>
-            <systemPath>${basedir}/library/swing-glasspane-popup-1.5.1.jar</systemPath>
+            <version>3.6.1</version>
         </dependency>
 
         <dependency>
             <groupId>com.formdev</groupId>
             <artifactId>flatlaf-extras</artifactId>
             <version>3.6.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.miglayout</groupId>
+            <artifactId>miglayout-swing</artifactId>
+            <version>5.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>raven.dialog</groupId>
+            <artifactId>modal-dialog</artifactId>
+            <version>2.5.2</version>
+            <scope>system</scope>
+            <systemPath>${basedir}/library/modal-dialog-2.5.2-sources.jar</systemPath>
+        </dependency>
+
+        <dependency>
+            <groupId>raven.dialog</groupId>
+            <artifactId>modal-dialog-demo</artifactId>
+            <version>2.5.2</version>
+            <scope>system</scope>
+            <systemPath>${basedir}/library/modal-dialog-demo-2.5.2.jar</systemPath>
         </dependency>
 
         <dependency>
@@ -77,15 +79,15 @@
         </dependency>
 
         <dependency>
-            <groupId>com.miglayout</groupId>
-            <artifactId>miglayout-swing</artifactId>
-            <version>5.0</version>
-        </dependency>
-
-        <dependency>
             <groupId>uk.co.caprica</groupId>
             <artifactId>vlcj</artifactId>
             <version>4.8.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.dj-raven</groupId>
+            <artifactId>modal-dialog</artifactId>
+            <version>2.5.2</version>
         </dependency>
 
     </dependencies>

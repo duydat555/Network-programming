@@ -1,91 +1,72 @@
 package com.example.desktop.drawer;
 
-import com.example.desktop.SwingApp;
 import com.example.desktop.form.Dashboard;
-import raven.drawer.DrawerOption;
-import raven.drawer.component.SimpleDrawerBuilder;
-import raven.drawer.component.footer.SimpleFooterData;
-import raven.drawer.component.header.SimpleHeaderData;
-import raven.drawer.component.menu.MenuAction;
-import raven.drawer.component.menu.MenuEvent;
-import raven.drawer.component.menu.MenuValidation;
-import raven.drawer.component.menu.SimpleMenuOption;
-import raven.drawer.component.menu.data.Item;
-import raven.drawer.component.menu.data.MenuItem;
-import raven.swing.AvatarIcon;
+import com.example.desktop.system.Form;
+import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.extras.FlatSVGIcon;
+import raven.extras.AvatarIcon;
+import com.example.desktop.system.AllForms;
+import com.example.desktop.system.FormManager;
+import raven.modal.drawer.DrawerPanel;
+import raven.modal.drawer.item.Item;
+import raven.modal.drawer.item.MenuItem;
+import raven.modal.drawer.menu.MenuAction;
+import raven.modal.drawer.menu.MenuEvent;
+import raven.modal.drawer.menu.MenuOption;
+import raven.modal.drawer.menu.MenuStyle;
+import raven.modal.drawer.renderer.DrawerStraightDotLineStyle;
+import raven.modal.drawer.simple.SimpleDrawerBuilder;
+import raven.modal.drawer.simple.footer.LightDarkButtonFooter;
+import raven.modal.drawer.simple.footer.SimpleFooterData;
+import raven.modal.drawer.simple.header.SimpleHeaderData;
+import raven.modal.option.Option;
 
-import java.util.ArrayList;
-import java.util.List;
+import javax.swing.*;
+import java.awt.*;
+import java.util.Arrays;
 
 public class MyDrawerBuilder extends SimpleDrawerBuilder {
+    private static MyDrawerBuilder instance;
+
+    public static MyDrawerBuilder getInstance() {
+        if (instance == null) {
+            instance = new MyDrawerBuilder();
+        }
+        return instance;
+    }
+
+    private final int SHADOW_SIZE = 12;
+
+    private MyDrawerBuilder() {
+        super(createSimpleMenuOption());
+        LightDarkButtonFooter lightDarkButtonFooter = (LightDarkButtonFooter) getFooter();
+        lightDarkButtonFooter.addModeChangeListener(isDarkMode -> {
+            // event for light dark mode changed
+        });
+    }
 
     @Override
     public SimpleHeaderData getSimpleHeaderData() {
+        AvatarIcon icon = new AvatarIcon(new FlatSVGIcon("raven/modal/demo/drawer/image/avatar_male.svg", 100, 100), 50, 50, 3.5f);
+        icon.setType(AvatarIcon.Type.MASK_SQUIRCLE);
+        icon.setBorder(2, 2);
+
+        changeAvatarIconBorderColor(icon);
+
+        UIManager.addPropertyChangeListener(evt -> {
+            if (evt.getPropertyName().equals("lookAndFeel")) {
+                changeAvatarIconBorderColor(icon);
+            }
+        });
+
         return new SimpleHeaderData()
-                .setIcon(new AvatarIcon(getClass().getResource("/images/c8bhTxVxhN4DMrJeCnu5usutbY5.jpg"), 60, 60, 999))
+                .setIcon(icon)
                 .setTitle("Lê Duy Đạt")
                 .setDescription("ledat16072005@gmail.com");
     }
 
-    @Override
-    public SimpleMenuOption getSimpleMenuOption() {
-        String icons[] = {
-                "house.svg",
-                "list.svg",
-                "list-ordered.svg",
-                "map-pin-house.svg",
-                "log-out.svg"};
-
-        List<MenuItem> menuItems = new ArrayList<>();
-        int iconIndex = 0;
-
-//        menuItems.add(new Item.Label("MAIN"));
-        menuItems.add(new Item("Trang chủ", icons[iconIndex++]));
-
-//        menuItems.add(new Item.Label("WEB APP"));
-        menuItems.add(new Item("Chủ đề", icons[iconIndex++])
-                .subMenu("Marvel")
-                .subMenu("DC")
-                .subMenu("4k")
-                .subMenu("Lồng tiếng"));
-
-       // menuItems.add(new Item.Label("COMPONENT"));
-        menuItems.add(new Item("Loại phim", icons[iconIndex++])
-                .subMenu("Phim lẻ")
-                .subMenu("Phim bộ"));
-        menuItems.add(new Item("Quốc gia", icons[iconIndex++])
-                .subMenu("Mỹ")
-                .subMenu("Hàn Quốc")
-                .subMenu("Trung Quốc")
-                .subMenu("Việt Nam"));
-
-        menuItems.add(new Item("Đăng xuất", icons[iconIndex++]));
-
-        return new SimpleMenuOption()
-                .setMenus(menuItems.toArray(new MenuItem[0]))
-                .setBaseIconPath("icons")
-                .setIconScale(0.75f)
-                .addMenuEvent(new MenuEvent() {
-                    @Override
-                    public void selected(MenuAction action, int[] index) {
-                        if (index.length > 0 && index[0] == 0) {
-                            // WindowsTabbed.getInstance().addTab("Test Form", new TestForm());
-                            System.out.println("Dashboard selected");
-                            SwingApp.showFormStatic(new Dashboard());
-                        } else if (index.length > 0 && index[0] == 1) {
-                            if (index.length > 1) {
-                                System.out.println("Marvel");
-
-                            }
-                        }
-                      //  System.out.println("Menu selected " + index[0] + (index.length > 1 ? " " + index[1] : ""));
-                    }
-                })
-                .setMenuValidation(new MenuValidation() {
-                    public boolean menuValidation(int index, int subIndex) {
-                        return true;
-                    }
-                });
+    private void changeAvatarIconBorderColor(AvatarIcon icon) {
+        icon.setBorderColor(new AvatarIcon.BorderColor(UIManager.getColor("Component.accentColor"), 0.7f));
     }
 
     @Override
@@ -96,8 +77,109 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
     }
 
     @Override
+    public Option createOption() {
+        Option option = super.createOption();
+        option.setOpacity(0.3f);
+        option.getBorderOption()
+                .setShadowSize(new Insets(0, 0, 0, SHADOW_SIZE));
+        return option;
+    }
+
+    public static MenuOption createSimpleMenuOption() {
+
+        MenuOption simpleMenuOption = new MenuOption();
+
+        MenuItem items[] = new MenuItem[]{
+                new Item("Trang chủ", "house.svg", Dashboard.class),
+                new Item("Chủ đề", "library-big.svg")
+                        .subMenu("Marvel")
+                        .subMenu("DC")
+                        .subMenu("4K"),
+                new Item("Thể loại", "list.svg")
+                        .subMenu("Phim lẻ")
+                        .subMenu("Phim bộ"),
+                new Item("Quốc gia", "map-pinned.svg")
+                        .subMenu("Việt Nam")
+                        .subMenu("Hàn Quốc"),
+                new Item("Đăng xuất", "log-out.svg")
+        };
+
+        simpleMenuOption.setMenuStyle(new MenuStyle() {
+
+            @Override
+            public void styleMenuItem(JButton menu, int[] index, boolean isMainItem) {
+                boolean isTopLevel = index.length == 1;
+                if (isTopLevel) {
+                    // adjust item menu at the top level because it's contain icon
+                    menu.putClientProperty(FlatClientProperties.STYLE, "" +
+                            "margin:-1,0,-1,0;");
+                }
+            }
+
+            @Override
+            public void styleMenu(JComponent component) {
+                component.putClientProperty(FlatClientProperties.STYLE, getDrawerBackgroundStyle());
+            }
+        });
+
+        simpleMenuOption.getMenuStyle().setDrawerLineStyleRenderer(new DrawerStraightDotLineStyle());
+
+        simpleMenuOption.addMenuEvent(new MenuEvent() {
+            @Override
+            public void selected(MenuAction action, int[] index) {
+                System.out.println("Drawer menu selected " + Arrays.toString(index));
+                Class<?> itemClass = action.getItem().getItemClass();
+                int i = index[0];
+                if (i == 4) {
+                    action.consume();
+                    return;
+                }
+                if (itemClass == null || !Form.class.isAssignableFrom(itemClass)) {
+                    action.consume();
+                    return;
+                }
+                Class<? extends Form> formClass = (Class<? extends Form>) itemClass;
+                FormManager.showForm(AllForms.getForm(formClass));
+            }
+        });
+
+        simpleMenuOption.setMenus(items)
+                .setBaseIconPath("icons")
+                .setIconScale(0.9f);
+
+        return simpleMenuOption;
+    }
+
+
+    @Override
     public int getDrawerWidth() {
-        return 275;
+        return 270 + SHADOW_SIZE;
+    }
+
+    @Override
+    public int getDrawerCompactWidth() {
+        return 80 + SHADOW_SIZE;
+    }
+
+    @Override
+    public int getOpenDrawerAt() {
+        return 1000;
+    }
+
+    @Override
+    public boolean openDrawerAtScale() {
+        return false;
+    }
+
+    @Override
+    public void build(DrawerPanel drawerPanel) {
+        drawerPanel.putClientProperty(FlatClientProperties.STYLE, getDrawerBackgroundStyle());
+    }
+
+    private static String getDrawerBackgroundStyle() {
+        return "" +
+                "[light]background:tint($Panel.background,20%);" +
+                "[dark]background:tint($Panel.background,5%);";
     }
 
 }
