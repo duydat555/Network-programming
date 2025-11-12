@@ -6,10 +6,8 @@ import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
 import raven.modal.demo.Demo;
 import raven.modal.demo.component.FormSearchButton;
-import raven.modal.demo.component.MemoryBar;
 import raven.modal.demo.component.RefreshLine;
 import raven.modal.demo.icons.SVGIconUIColor;
-import raven.modal.demo.system.FormSearch;
 
 import javax.swing.*;
 import java.awt.*;
@@ -96,8 +94,8 @@ public class MainForm extends JPanel {
         panel.add(new JSeparator(JSeparator.VERTICAL));
 
         // memory
-        MemoryBar memoryBar = new MemoryBar();
-        panel.add(memoryBar);
+//        MemoryBar memoryBar = new MemoryBar();
+//        panel.add(memoryBar);
         return panel;
     }
 
