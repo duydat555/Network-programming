@@ -1,19 +1,17 @@
 package com.example.desktop.system;
 
-import java.awt.Component;
 import javax.swing.JFrame;
 
 import com.example.desktop.form.Dashboard;
 import raven.modal.Drawer;
 import raven.modal.ModalDialog;
-import raven.modal.component.Modal;
 import raven.modal.component.SimpleModalBorder;
-import raven.modal.demo.auth.Login;
+import com.example.desktop.form.Login;
 import raven.modal.demo.component.About;
 import raven.modal.demo.utils.UndoRedo;
 
 public class FormManager {
-    protected static final UndoRedo<Form> FORMS = new UndoRedo();
+    protected static final UndoRedo<Form> FORMS = new UndoRedo<>();
     private static JFrame frame;
     private static MainForm mainForm;
     private static Login login;
@@ -21,14 +19,15 @@ public class FormManager {
     public static void install(JFrame f) {
         frame = f;
 
-        frame.getContentPane().removeAll();
-        frame.getContentPane().add(FormManager.getMainForm());
-        frame.repaint();
-        frame.revalidate();
+//        frame.getContentPane().removeAll();
+//        frame.getContentPane().add(FormManager.getMainForm());
+//        frame.repaint();
+//        frame.revalidate();
 
         install();
+        logout();
 
-        showForm(AllForms.getForm(Dashboard.class));
+//        showForm(AllForms.getForm(Dashboard.class));
     }
 
 
@@ -73,25 +72,25 @@ public class FormManager {
         }
     }
 
-//    public static void login() {
-//        Drawer.setVisible(true);
-//        frame.getContentPane().removeAll();
-//        frame.getContentPane().add(FormManager.getMainForm());
-//        Drawer.setSelectedItemClass(FormDashboard.class);
-//        frame.repaint();
-//        frame.revalidate();
-//    }
-//
-//    public static void logout() {
-//        Drawer.setVisible(false);
-//        frame.getContentPane().removeAll();
-//        Login login = FormManager.getLogin();
-//        login.formCheck();
-//        frame.getContentPane().add(login);
-//        FORMS.clear();
-//        frame.repaint();
-//        frame.revalidate();
-//    }
+    public static void login() {
+        Drawer.setVisible(true);
+        frame.getContentPane().removeAll();
+        frame.getContentPane().add(FormManager.getMainForm());
+        Drawer.setSelectedItemClass(Dashboard.class);
+        frame.repaint();
+        frame.revalidate();
+    }
+
+    public static void logout() {
+        Drawer.setVisible(false);
+        frame.getContentPane().removeAll();
+        Login login = FormManager.getLogin();
+        login.formCheck();
+        frame.getContentPane().add(login);
+        FORMS.clear();
+        frame.repaint();
+        frame.revalidate();
+    }
 
     public static JFrame getFrame() {
         return frame;
@@ -112,7 +111,7 @@ public class FormManager {
     }
 
     public static void showAbout() {
-        ModalDialog.showModal((Component)frame, (Modal)new SimpleModalBorder(new About(), "About"), ModalDialog.createOption().setAnimationEnabled(false));
+        ModalDialog.showModal(frame, new SimpleModalBorder(new About(), "About"), ModalDialog.createOption().setAnimationEnabled(false));
     }
 }
 

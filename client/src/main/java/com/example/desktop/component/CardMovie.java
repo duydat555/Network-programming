@@ -1,4 +1,4 @@
-package com.example.desktop.component.item;
+package com.example.desktop.component;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;

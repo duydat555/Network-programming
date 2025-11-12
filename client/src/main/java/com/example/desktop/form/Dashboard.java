@@ -1,6 +1,6 @@
 package com.example.desktop.form;
 
-import com.example.desktop.component.item.CardMovie;
+import com.example.desktop.component.CardMovie;
 import com.example.desktop.system.Form;
 
 import javax.swing.*;
