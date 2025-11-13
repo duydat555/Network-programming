@@ -21,7 +21,7 @@ public class SwingApp extends JFrame {
     private void init() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         getRootPane().putClientProperty(FlatClientProperties.FULL_WINDOW_CONTENT, true);
-        Drawer.installDrawer(this, MyDrawerBuilder.getInstance());
+        // Drawer will be installed after login to avoid null UserSession
         FormManager.install(this);
         setSize(new Dimension(1366, 768));
         setLocationRelativeTo(null);

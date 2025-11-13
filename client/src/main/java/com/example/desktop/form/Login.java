@@ -1,12 +1,13 @@
 package com.example.desktop.form;
 
+import com.example.desktop.api.AuthApiClient;
 import com.example.desktop.component.ButtonLink;
+import com.example.desktop.system.UserSession;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.component.DropShadowBorder;
 import raven.modal.demo.component.LabelButton;
-import raven.modal.demo.model.ModelUser;
 import com.example.desktop.system.Form;
 import com.example.desktop.system.FormManager;
 
@@ -57,7 +58,7 @@ public class Login extends Form {
         cmdLogin.setHorizontalTextPosition(JButton.LEADING);
 
         // style
-        txtUsername.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Nhập tên đăng nhập của bạn");
+        txtUsername.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Nhập email đăng nhập của bạn");
         txtPassword.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Nhập mật khẩu của bạn");
 
         panelLogin.putClientProperty(FlatClientProperties.STYLE, "" +
@@ -74,12 +75,17 @@ public class Login extends Form {
                 "arc:12;" +
                 "showRevealButton:true;");
 
+        cmdLogin.setBackground(new Color(0x57, 0x4b, 0xce));
+        cmdLogin.setOpaque(true);
+        cmdLogin.setContentAreaFilled(true);
+        cmdLogin.setBorderPainted(false);
+        cmdLogin.setForeground(Color.WHITE);
+
         cmdLogin.putClientProperty(FlatClientProperties.STYLE, "" +
-                "background:#574bce;" +
                 "margin:4,10,4,10;" +
                 "arc:12;");
 
-        loginContent.add(new JLabel("Tên đăng nhập"), "gapy 25");
+        loginContent.add(new JLabel("Email đăng nhập"), "gapy 25");
         loginContent.add(txtUsername);
 
         loginContent.add(new JLabel("Mật khẩu"), "gapy 10");
@@ -93,11 +99,48 @@ public class Login extends Form {
 
         // event
         cmdLogin.addActionListener(e -> {
-            String userName = txtUsername.getText();
+            String email = txtUsername.getText();
             String password = String.valueOf(txtPassword.getPassword());
-            ModelUser user = getUser(userName, password);
-           // MyDrawerBuilder.getInstance().setUser(user);
-            FormManager.login();
+
+            if (email.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!", "Lỗi", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            cmdLogin.setEnabled(false);
+
+            new Thread(() -> {
+                AuthApiClient.LoginResult result =
+                        AuthApiClient.login(email, password);
+
+                SwingUtilities.invokeLater(() -> {
+                    cmdLogin.setEnabled(true);
+
+                    if (result.success()) {
+
+                        System.out.println("=== LOGIN SUCCESS ===");
+                        System.out.println("User from API: " + result.user());
+                        UserSession.setUser(result.user());
+                        System.out.println("User in session: " + UserSession.getUser());
+
+                        // Install drawer FIRST with user data
+                        FormManager.login();
+
+                        // Then show success message
+                        JOptionPane.showMessageDialog(this,
+                                result.message().isEmpty() ? "Đăng nhập thành công!" : result.message(),
+                                "Thông báo",
+                                JOptionPane.INFORMATION_MESSAGE);
+
+
+                    } else {
+                        JOptionPane.showMessageDialog(this,
+                                result.message(),
+                                "Đăng ký thất bại",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+            }).start();
         });
     }
 
@@ -106,7 +149,7 @@ public class Login extends Form {
         panelInfo.putClientProperty(FlatClientProperties.STYLE, "" +
                 "background:null;");
 
-        panelInfo.add(new JLabel("Bạn chưa có tài khoản ?"), "split 2,gapx push n");
+        panelInfo.add(new JLabel("Bạn chưa có tài khoản?"), "split 2,gapx push n");
         ButtonLink cmdSignUp = new ButtonLink("Đăng ký");
         panelInfo.add(cmdSignUp, "gapx n push");
         panelInfo.add(new JLabel("Bạn không nhớ chi tiết tài khoản của mình?"));
@@ -119,6 +162,16 @@ public class Login extends Form {
         lbLink.addOnClick(e -> {
 
         });
+
+        cmdSignUp.addActionListener(e -> {
+            // Navigate to Register form
+            JFrame frame = FormManager.getFrame();
+            frame.getContentPane().removeAll();
+            Register register = new Register();
+            frame.getContentPane().add(register);
+            frame.repaint();
+            frame.revalidate();
+        });
         return panelInfo;
     }
 
@@ -126,17 +179,5 @@ public class Login extends Form {
         if (panel != null) {
             panel.setBorder(new DropShadowBorder(new Insets(5, 8, 12, 8), 1, 25));
         }
-    }
-
-    private ModelUser getUser(String user, String password) {
-
-        // just testing.
-        // input any user and password is admin by default
-        // user='staff' password='123' if we want to test validation menu for role staff
-
-        if (user.equals("staff") && password.equals("123")) {
-            return new ModelUser("Justin White", "justinwhite@gmail.com", ModelUser.Role.STAFF);
-        }
-        return new ModelUser("Ra Ven", "raven@gmail.com", ModelUser.Role.ADMIN);
     }
 }

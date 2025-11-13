@@ -2,6 +2,7 @@ package com.example.desktop.system;
 
 import javax.swing.JFrame;
 
+import com.example.desktop.drawer.MyDrawerBuilder;
 import com.example.desktop.form.Dashboard;
 import raven.modal.Drawer;
 import raven.modal.ModalDialog;
@@ -15,6 +16,7 @@ public class FormManager {
     private static JFrame frame;
     private static MainForm mainForm;
     private static Login login;
+    private static boolean drawerInstalled = false;
 
     public static void install(JFrame f) {
         frame = f;
@@ -51,7 +53,9 @@ public class FormManager {
             form.formCheck();
             form.formOpen();
             mainForm.setForm(form);
-            Drawer.setSelectedItemClass(form.getClass());
+            if (drawerInstalled) {
+                Drawer.setSelectedItemClass(form.getClass());
+            }
         }
     }
 
@@ -61,7 +65,9 @@ public class FormManager {
             form.formCheck();
             form.formOpen();
             mainForm.setForm(form);
-            Drawer.setSelectedItemClass(form.getClass());
+            if (drawerInstalled) {
+                Drawer.setSelectedItemClass(form.getClass());
+            }
         }
     }
 
@@ -73,6 +79,18 @@ public class FormManager {
     }
 
     public static void login() {
+        System.out.println("=== FormManager.login() called ===");
+        System.out.println("UserSession.getUser() before drawer install: " + UserSession.getUser());
+
+        // Install drawer here after UserSession is set
+        if (!drawerInstalled) {
+            // Reset drawer builder instance to force recreation with new user data
+            MyDrawerBuilder.resetInstance();
+            System.out.println("Installing drawer...");
+            Drawer.installDrawer(frame, MyDrawerBuilder.getInstance());
+            drawerInstalled = true;
+        }
+
         Drawer.setVisible(true);
         frame.getContentPane().removeAll();
         frame.getContentPane().add(FormManager.getMainForm());
@@ -82,7 +100,10 @@ public class FormManager {
     }
 
     public static void logout() {
-        Drawer.setVisible(false);
+        // Only set drawer invisible if it was installed
+        if (drawerInstalled) {
+            Drawer.setVisible(false);
+        }
         frame.getContentPane().removeAll();
         Login login = FormManager.getLogin();
         login.formCheck();

@@ -1,7 +1,9 @@
 package com.example.desktop.drawer;
 
+import com.example.desktop.api.AuthApiClient;
 import com.example.desktop.form.Dashboard;
 import com.example.desktop.system.Form;
+import com.example.desktop.system.UserSession;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import raven.extras.AvatarIcon;
@@ -35,6 +37,10 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         return instance;
     }
 
+    public static void resetInstance() {
+        instance = null;
+    }
+
     private final int SHADOW_SIZE = 12;
 
     private MyDrawerBuilder() {
@@ -47,6 +53,21 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
     @Override
     public SimpleHeaderData getSimpleHeaderData() {
+        System.out.println("=== getSimpleHeaderData() called ===");
+        AuthApiClient.UserInfo u = UserSession.getUser();
+        System.out.println("UserSession.getUser(): " + u);
+
+        String username = "Guest";
+        String email = "Vui lòng đăng nhập";
+
+        if (u != null) {
+            username = u.username();
+            email = u.email();
+            System.out.println("Setting header to: " + username + " / " + email);
+        } else {
+            System.out.println("User is null, using Guest");
+        }
+
         AvatarIcon icon = new AvatarIcon(new FlatSVGIcon("raven/modal/demo/drawer/image/avatar_male.svg", 100, 100), 50, 50, 3.5f);
         icon.setType(AvatarIcon.Type.MASK_SQUIRCLE);
         icon.setBorder(2, 2);
@@ -61,8 +82,8 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
         return new SimpleHeaderData()
                 .setIcon(icon)
-                .setTitle("Lê Duy Đạt")
-                .setDescription("ledat16072005@gmail.com");
+                .setTitle(username)
+                .setDescription(email);
     }
 
     private void changeAvatarIconBorderColor(AvatarIcon icon) {
@@ -131,6 +152,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 Class<?> itemClass = action.getItem().getItemClass();
                 int i = index[0];
                 if (i == 4) {
+                    FormManager.logout();
                     action.consume();
                     return;
                 }
