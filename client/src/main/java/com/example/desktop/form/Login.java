@@ -136,7 +136,7 @@ public class Login extends Form {
                     } else {
                         JOptionPane.showMessageDialog(this,
                                 result.message(),
-                                "Đăng ký thất bại",
+                                "Đăng nhập thất bại",
                                 JOptionPane.ERROR_MESSAGE);
                     }
                 });
