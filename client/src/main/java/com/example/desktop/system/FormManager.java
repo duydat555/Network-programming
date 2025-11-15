@@ -111,6 +111,9 @@ public class FormManager {
         if (drawerInstalled) {
             Drawer.setVisible(false);
         }
+
+        UserSession.clear();
+
         frame.getContentPane().removeAll();
         Login login = FormManager.getLogin();
         login.formCheck();
@@ -181,6 +184,8 @@ public class FormManager {
         if (drawerInstalled) {
             Drawer.setVisible(false);
         }
+
+        UserSession.clear();
 
         // 2. Lấy frame chính
         JFrame frame = getFrame();
