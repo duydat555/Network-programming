@@ -33,25 +33,37 @@ public class FormSearch {
         return instance;
     }
 
+    // THAY ĐỔI: Constructor
     private FormSearch() {
         formsMap = new HashMap<>();
-        for (Class<? extends Form> cls : getClassForms()) {
+        // Tải menu client làm mặc định khi khởi động
+        reloadMenus(MyDrawerBuilder.getInstance().getSimpleMenuOption().getMenus());
+    }
+
+    // HÀM MỚI: Thêm hàm này
+    public void reloadMenus(MenuItem[] menuItems) {
+        formsMap.clear(); // Xóa menu cũ
+
+        List<Class<?>> formClass = new ArrayList<>();
+        getMenuClass(menuItems, formClass); // Gọi hàm non-static
+
+        @SuppressWarnings("unchecked")
+        Class<? extends Form>[] formClasses = formClass.toArray(new Class[0]);
+
+        for (Class<? extends Form> cls : formClasses) {
             if (cls.isAnnotationPresent(SystemForm.class)) {
                 SystemForm f = cls.getAnnotation(SystemForm.class);
                 formsMap.put(f, cls);
             }
         }
+
+        // Reset search panel để nó nạp map mới
+        searchPanel = null;
     }
 
-    private Class<? extends Form>[] getClassForms() {
-        MenuItem[] menuItems = MyDrawerBuilder.getInstance().getSimpleMenuOption().getMenus();
-        List<Class<?>> formClass = new ArrayList<>();
-        getMenuClass(menuItems, formClass);
-        @SuppressWarnings("unchecked")
-        Class<? extends Form>[] result = formClass.toArray(new Class[0]);
-        return result;
-    }
+    // XÓA: private Class<? extends Form>[] getClassForms() { ... }
 
+    // THAY ĐỔI: Chuyển hàm này thành non-static (xóa "static")
     private void getMenuClass(MenuItem[] menuItems, List<Class<?>> formClass) {
         for (MenuItem menu : menuItems) {
             if (menu.isMenu()) {

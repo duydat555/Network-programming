@@ -34,7 +34,7 @@ public class Login extends Form {
             }
         };
         panelLogin.setOpaque(false);
-       // applyShadowBorder(panelLogin);
+        // applyShadowBorder(panelLogin);
 
         JPanel loginContent = new JPanel(new MigLayout("fillx,wrap,insets 35 35 25 35", "[fill,300]"));
 
@@ -102,6 +102,9 @@ public class Login extends Form {
             String email = txtUsername.getText();
             String password = String.valueOf(txtPassword.getPassword());
 
+            // Email admin (bạn có thể thay đổi)
+            final String ADMIN_EMAIL = "admin1@gmail.com";
+
             if (email.isEmpty() || password.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!", "Lỗi", JOptionPane.WARNING_MESSAGE);
                 return;
@@ -110,6 +113,7 @@ public class Login extends Form {
             cmdLogin.setEnabled(false);
 
             new Thread(() -> {
+                // Bước 1: Luôn gọi API để server xác thực
                 AuthApiClient.LoginResult result =
                         AuthApiClient.login(email, password);
 
@@ -118,22 +122,38 @@ public class Login extends Form {
 
                     if (result.success()) {
 
-                        System.out.println("=== LOGIN SUCCESS ===");
-                        System.out.println("User from API: " + result.user());
-                        UserSession.setUser(result.user());
-                        System.out.println("User in session: " + UserSession.getUser());
+                        // Bước 2: Kiểm tra xem người đăng nhập có phải là Admin không
+                        if (result.user() != null && result.user().email().equals(ADMIN_EMAIL)) {
 
-                        // Install drawer FIRST with user data
-                        FormManager.login();
+                            // === ĐÂY LÀ ADMIN ===
+                            JOptionPane.showMessageDialog(this,
+                                    "Chào mừng Admin!",
+                                    "Đăng nhập thành công",
+                                    JOptionPane.INFORMATION_MESSAGE);
 
-                        // Then show success message
-                        JOptionPane.showMessageDialog(this,
-                                result.message().isEmpty() ? "Đăng nhập thành công!" : result.message(),
-                                "Thông báo",
-                                JOptionPane.INFORMATION_MESSAGE);
+                            // Gọi hàm hiển thị giao diện Admin
+                            FormManager.showAdminUI();
 
+                        } else {
+
+                            // === ĐÂY LÀ CLIENT THÔNG THƯỜNG ===
+                            System.out.println("=== LOGIN SUCCESS (CLIENT) ===");
+                            System.out.println("User from API: " + result.user());
+                            UserSession.setUser(result.user());
+                            System.out.println("User in session: " + UserSession.getUser());
+
+                            // Install drawer FIRST with user data
+                            FormManager.login();
+
+                            // Then show success message
+                            JOptionPane.showMessageDialog(this,
+                                    result.message().isEmpty() ? "Đăng nhập thành công!" : result.message(),
+                                    "Thông báo",
+                                    JOptionPane.INFORMATION_MESSAGE);
+                        }
 
                     } else {
+                        // Đăng nhập thất bại (sai pass, sai email...)
                         JOptionPane.showMessageDialog(this,
                                 result.message(),
                                 "Đăng nhập thất bại",
@@ -181,3 +201,4 @@ public class Login extends Form {
         }
     }
 }
+
