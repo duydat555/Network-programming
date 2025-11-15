@@ -112,10 +112,6 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
 
         MenuItem items[] = new MenuItem[]{
                 new Item("Trang chủ", "house.svg", Dashboard.class),
-                new Item("Chủ đề", "library-big.svg")
-                        .subMenu("Marvel")
-                        .subMenu("DC")
-                        .subMenu("4K"),
                 new Item("Thể loại", "list.svg")
                         .subMenu("Phim lẻ")
                         .subMenu("Phim bộ"),
@@ -153,7 +149,7 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                 System.out.println("Drawer menu selected " + Arrays.toString(index));
                 Class<?> itemClass = action.getItem().getItemClass();
                 int i = index[0];
-                if (i == 6) {
+                if (i == 5) {
                     FormManager.logout();
                     action.consume();
                     return;

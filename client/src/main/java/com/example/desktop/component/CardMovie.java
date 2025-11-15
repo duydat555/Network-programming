@@ -1,92 +1,75 @@
 package com.example.desktop.component;
 
+import com.example.desktop.model.Movie;
+import com.formdev.flatlaf.FlatClientProperties;
+import net.miginfocom.swing.MigLayout;
+import raven.extras.AvatarIcon;
+
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.LineBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.image.BufferedImage;
+import java.util.function.Consumer;
 
 public class CardMovie extends JPanel {
 
-    private final JLabel posterLabel = new JLabel();
-    private final JLabel titleLabel  = new JLabel();
+    private final Movie movie;
+    private final Consumer<Movie> event;
 
-    private static final Color BG            = new Color(229,227,217);
-    private static final Color FG            = new Color(0, 0, 0);
-    private static final Color HOVER_BORDER  = new Color(90, 126, 255);
-    private static final Color NORMAL_BORDER = new Color(60, 60, 65);
-    private static final Dimension POSTER_SIZE = new Dimension(160, 240);
-
-    public CardMovie() {
-        setOpaque(true);
-        setBackground(BG);
-        setLayout(new BorderLayout(0, 6));
-        setBorder(new EmptyBorder(8, 8, 8, 8));
-
-        posterLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        posterLabel.setVerticalAlignment(SwingConstants.CENTER);
-        posterLabel.setPreferredSize(POSTER_SIZE);
-        posterLabel.setOpaque(true);
-        posterLabel.setBackground(new Color(32, 32, 36));
-        posterLabel.setBorder(new LineBorder(NORMAL_BORDER, 1, true));
-        posterLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        posterLabel.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) {
-                posterLabel.setBorder(new LineBorder(HOVER_BORDER, 2, true));
-            }
-            @Override public void mouseExited(MouseEvent e) {
-                posterLabel.setBorder(new LineBorder(NORMAL_BORDER, 1, true));
-            }
-        });
-
-        titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        titleLabel.setForeground(FG);
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 14f));
-        titleLabel.setText("Movie Title");
-
-        add(posterLabel, BorderLayout.CENTER);
-        add(titleLabel,  BorderLayout.SOUTH);
+    public CardMovie(Movie movie, Consumer<Movie> event) {
+        this.movie = movie;
+        this.event = event;
+        init();
     }
 
-    public void setMovieData(Image image, String title) {
-        titleLabel.setText(title);
-        posterLabel.setIcon(new ImageIcon(scaleToFit(image, POSTER_SIZE)));
+    private void init() {
+        putClientProperty(FlatClientProperties.STYLE,
+                "arc:30;" +
+                "border:10,10,10,10,#a9a9a9");
+        setBackground(new Color(233, 238, 246));
+        setLayout(new MigLayout("", "", "fill"));
+
+        JPanel panelHeader = createHeader();
+
+        JPanel panelBody = createBody();
+
+        add(panelHeader, "dock north");
+        add(panelBody, "dock south");
     }
 
-    public void setMovieData(Icon posterIcon, String title) {
-        titleLabel.setText(title);
-        posterLabel.setIcon(posterIcon);
+    private JPanel createHeader() {
+        JPanel header = new JPanel(new MigLayout("fill,insets 0", "[fill]", "[top]"));
+        header.putClientProperty(FlatClientProperties.STYLE,
+                "background:null");
+
+        JLabel label = new JLabel(new AvatarIcon(
+                movie.getPoster(), 160, 220, 20
+        ));
+        label.setHorizontalAlignment(SwingConstants.CENTER);
+
+        header.add(label, "grow");
+        return header;
     }
 
-    public void onPosterClick(Runnable action) {
-        for (MouseListener ml : posterLabel.getMouseListeners()) {
-            // giữ nguyên listener hover; chỉ thêm click
-        }
-        posterLabel.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
-                if (action != null) action.run();
-            }
-        });
-    }
+    private JPanel createBody() {
+        JPanel body = new JPanel(new MigLayout("fillx,insets 10 5 10 5", "[center]", "[]5[]"));
+        body.putClientProperty(FlatClientProperties.STYLE,
+                "background:null");
 
-    private static Image scaleToFit(Image src, Dimension target) {
-        int tw = target.width, th = target.height;
-        int sw = src.getWidth(null), sh = src.getHeight(null);
-        if (sw <= 0 || sh <= 0) return src;
+        JLabel lblTitle = new JLabel(movie.getName());
+        lblTitle.setFont(lblTitle.getFont().deriveFont(Font.BOLD, 14f));
+        lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
 
-        double r = Math.min((double) tw / sw, (double) th / sh);
-        int nw = (int) Math.round(sw * r);
-        int nh = (int) Math.round(sh * r);
+        JButton button = new JButton("Chi tiết");
+        button.addActionListener(_ -> event.accept(movie));
+        button.putClientProperty(FlatClientProperties.STYLE,
+                "arc:999;" +
+                "margin:5,30,5,30;" +
+                "borderWidth:1;" +
+                "focusWidth:0;" +
+                "innerFocusWidth:0;" +
+                "background:null;");
 
-        Image scaled = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = (Graphics2D) scaled.getGraphics();
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        g2.drawImage(src, 0, 0, nw, nh, null);
-        g2.dispose();
-        return scaled;
+        body.add(lblTitle, "wrap,growx,align center");
+        body.add(button, "align center");
+        return body;
     }
 }
