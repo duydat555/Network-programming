@@ -125,14 +125,14 @@ public class Login extends Form {
                         // Bước 2: Kiểm tra xem người đăng nhập có phải là Admin không
                         if (result.user() != null && result.user().email().equals(ADMIN_EMAIL)) {
 
+                            // Gọi hàm hiển thị giao diện Admin
+                            FormManager.showAdminUI();
+
                             // === ĐÂY LÀ ADMIN ===
                             JOptionPane.showMessageDialog(this,
                                     "Chào mừng Admin!",
                                     "Đăng nhập thành công",
                                     JOptionPane.INFORMATION_MESSAGE);
-
-                            // Gọi hàm hiển thị giao diện Admin
-                            FormManager.showAdminUI();
 
                         } else {
 

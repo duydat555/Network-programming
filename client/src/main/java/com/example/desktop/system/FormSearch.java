@@ -2,7 +2,7 @@ package com.example.desktop.system;
 
 import raven.modal.ModalDialog;
 import raven.modal.demo.component.EmptyModalBorder;
-import raven.modal.demo.component.FormSearchPanel;
+import com.example.desktop.component.FormSearchPanel;
 import com.example.desktop.drawer.MyDrawerBuilder;
 import raven.modal.demo.utils.SystemForm;
 import raven.modal.drawer.item.Item;
@@ -99,10 +99,10 @@ public class FormSearch {
 
     private JPanel getSearchPanel() {
         if (searchPanel == null) {
-            Map<SystemForm, Class<? extends raven.modal.demo.system.Form>> ravenFormsMap = new HashMap<>();
+            Map<SystemForm, Class<? extends Form>> ravenFormsMap = new HashMap<>();
             for (Map.Entry<SystemForm, Class<? extends Form>> entry : formsMap.entrySet()) {
                 @SuppressWarnings("unchecked")
-                Class<? extends raven.modal.demo.system.Form> clazz = (Class<? extends raven.modal.demo.system.Form>) (Class<?>) entry.getValue();
+                Class<? extends Form> clazz = entry.getValue();
                 ravenFormsMap.put(entry.getKey(), clazz);
             }
             searchPanel = new FormSearchPanel(ravenFormsMap);

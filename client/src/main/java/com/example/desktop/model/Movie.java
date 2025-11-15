@@ -1,25 +1,65 @@
 package com.example.desktop.model;
 
 import javax.swing.*;
+import java.util.List;
 
 public class Movie {
 
-    private String name;
+    private Long id;
+    private String title;
     private String description;
+    private Integer year;
+    private Integer durationMin;
+    private String videoUrl;
+    private String posterUrl;
+    private List<String> genres;
     private ImageIcon poster;
 
+    public Movie() {
+    }
+
+    public Movie(Long id, String title, String description, Integer year, Integer durationMin,
+                 String videoUrl, String posterUrl, List<String> genres) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.year = year;
+        this.durationMin = durationMin;
+        this.videoUrl = videoUrl;
+        this.posterUrl = posterUrl;
+        this.genres = genres;
+    }
+
+    // Keep old constructor for backward compatibility
     public Movie(String name, String description, ImageIcon poster) {
-        this.name = name;
+        this.title = name;
         this.description = description;
         this.poster = poster;
     }
 
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    // Keep getName for backward compatibility
     public String getName() {
-        return name;
+        return title;
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.title = name;
     }
 
     public String getDescription() {
@@ -28,6 +68,46 @@ public class Movie {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Integer getYear() {
+        return year;
+    }
+
+    public void setYear(Integer year) {
+        this.year = year;
+    }
+
+    public Integer getDurationMin() {
+        return durationMin;
+    }
+
+    public void setDurationMin(Integer durationMin) {
+        this.durationMin = durationMin;
+    }
+
+    public String getVideoUrl() {
+        return videoUrl;
+    }
+
+    public void setVideoUrl(String videoUrl) {
+        this.videoUrl = videoUrl;
+    }
+
+    public String getPosterUrl() {
+        return posterUrl;
+    }
+
+    public void setPosterUrl(String posterUrl) {
+        this.posterUrl = posterUrl;
+    }
+
+    public List<String> getGenres() {
+        return genres;
+    }
+
+    public void setGenres(List<String> genres) {
+        this.genres = genres;
     }
 
     public ImageIcon getPoster() {

@@ -5,7 +5,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
 import raven.modal.demo.Demo;
-import raven.modal.demo.component.FormSearchButton;
+import com.example.desktop.component.FormSearchButton;
 import raven.modal.demo.component.RefreshLine;
 import raven.modal.demo.icons.SVGIconUIColor;
 
