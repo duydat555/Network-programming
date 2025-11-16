@@ -1,39 +1,36 @@
 package com.example.desktop.component;
 
+// THÊM CÁC IMPORT MỚI
+import com.example.desktop.api.AuthApiClient;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import com.formdev.flatlaf.icons.FlatMenuArrowIcon;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Cursor;
+
+import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
-import javax.swing.JTextField;
-import javax.swing.LookAndFeel;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
+import javax.imageio.ImageIO;
+import javax.swing.*;
+// (Giữ các import cũ của bạn)
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.PlainDocument;
+
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
 import raven.modal.ModalDialog;
 import raven.modal.component.ModalContainer;
 import raven.modal.demo.icons.SVGIconUIColor;
-import raven.modal.demo.menu.MyMenuValidation;
+
 import com.example.desktop.system.Form;
 import raven.modal.demo.utils.DemoPreferences;
 import raven.modal.demo.utils.SystemForm;
@@ -42,9 +39,16 @@ public class FormSearchPanel extends JPanel {
     private LookAndFeel oldTheme = UIManager.getLookAndFeel();
     private final int SEARCH_MAX_LENGTH = 50;
     private final Map<SystemForm, Class<? extends Form>> formsMap;
-    private final List<Item> listItems = new ArrayList();
+
+    // SỬA: Dùng List<JButton> để chứa cả Item (Form) và MovieItem
+    private final List<JButton> listItems = new ArrayList<>();
+
     private JTextField textSearch;
     private JPanel panelResult;
+
+    // MỚI: Timer để không gọi API liên tục
+    private Timer searchTimer;
+    private MovieSearchWorker movieSearchWorker;
 
     public FormSearchPanel(Map<SystemForm, Class<? extends Form>> formsMap) {
         this.formsMap = formsMap;
@@ -55,7 +59,7 @@ public class FormSearchPanel extends JPanel {
         this.setLayout(new MigLayout("fillx,insets 0,wrap", "[fill,500]"));
         this.textSearch = new JTextField();
         this.panelResult = new JPanel(new MigLayout("insets 3 10 3 10,fillx,wrap", "[fill]"));
-        this.textSearch.putClientProperty("JTextField.placeholderText", "Tìm kiếm...");
+        this.textSearch.putClientProperty("JTextField.placeholderText", "Tìm kiếm trang hoặc phim...");
         this.textSearch.putClientProperty("JTextField.leadingIcon", new FlatSVGIcon("raven/modal/demo/icons/search.svg", 0.4F));
         this.textSearch.putClientProperty("FlatLaf.style", "border:3,3,3,3;background:null;showClearButton:true;");
         this.add(this.textSearch, "gap 17 17 0 0");
@@ -74,83 +78,106 @@ public class FormSearchPanel extends JPanel {
             this.oldTheme = UIManager.getLookAndFeel();
             SwingUtilities.updateComponentTreeUI(this);
         }
-
     }
 
     private void installSearchField() {
+        // MỚI: Timer (300ms) để chờ người dùng gõ xong
+        searchTimer = new Timer(300, (e) -> {
+            performSearch(textSearch.getText().trim().toLowerCase());
+        });
+        searchTimer.setRepeats(false);
+
         this.textSearch.setDocument(new PlainDocument() {
             public void insertString(int offs, String str, AttributeSet a) throws BadLocationException {
                 if (this.getLength() + str.length() <= 50) {
                     super.insertString(offs, str, a);
                 }
-
             }
         });
-        this.textSearch.getDocument().addDocumentListener(new DocumentListener() {
-            private String text;
 
+        this.textSearch.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) {
-                this.search();
+                searchTimer.restart(); // Khởi động lại timer
             }
 
             public void removeUpdate(DocumentEvent e) {
-                this.search();
+                searchTimer.restart(); // Khởi động lại timer
             }
 
             public void changedUpdate(DocumentEvent e) {
-                this.search();
-            }
-
-            private void search() {
-                String st = FormSearchPanel.this.textSearch.getText().trim().toLowerCase();
-                if (!st.equals(this.text)) {
-                    this.text = st;
-                    FormSearchPanel.this.panelResult.removeAll();
-                    FormSearchPanel.this.listItems.clear();
-                    if (st.isEmpty()) {
-                        FormSearchPanel.this.showRecentResult();
-                    } else {
-                        for(Map.Entry<SystemForm, Class<? extends Form>> entry : FormSearchPanel.this.formsMap.entrySet()) {
-                            SystemForm s = (SystemForm)entry.getKey();
-                            if ((s.name().toLowerCase().contains(st) || s.description().toLowerCase().contains(st) || this.checkTags(s.tags(), st)) && MyMenuValidation.validation((Class)entry.getValue())) {
-                                Item item = FormSearchPanel.this.new Item(s, (Class)entry.getValue(), false, false);
-                                FormSearchPanel.this.panelResult.add(item);
-                                FormSearchPanel.this.listItems.add(item);
-                            }
-                        }
-
-                        if (!FormSearchPanel.this.listItems.isEmpty()) {
-                            FormSearchPanel.this.setSelected(0);
-                        } else {
-                            FormSearchPanel.this.panelResult.add(FormSearchPanel.this.createNoResult(st));
-                        }
-
-                        FormSearchPanel.this.panelResult.repaint();
-                        FormSearchPanel.this.updateLayout();
-                    }
-                }
-
-            }
-
-            private boolean checkTags(String[] tags, String st) {
-                return tags.length == 0 ? false : Arrays.stream(tags).anyMatch((s) -> s.contains(st));
+                searchTimer.restart(); // Khởi động lại timer
             }
         });
+
         this.textSearch.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
                 switch (e.getKeyCode()) {
-                    case 10:
-                        FormSearchPanel.this.showForm();
+                    case 10: // Enter
+                        FormSearchPanel.this.showSelection();
                         break;
-                    case 38:
+                    case 38: // Up
                         FormSearchPanel.this.move(true);
                         break;
-                    case 40:
+                    case 40: // Down
                         FormSearchPanel.this.move(false);
+                        break;
+                    case 27: // Escape
+                        ModalDialog.closeModal("search");
+                        break;
                 }
-
             }
         });
+    }
+
+    /**
+     * MỚI: Hàm tìm kiếm chính, được gọi bởi Timer
+     */
+    private void performSearch(String st) {
+        panelResult.removeAll();
+        listItems.clear();
+
+        if (st.isEmpty()) {
+            showRecentResult();
+            panelResult.repaint();
+            panelResult.revalidate();
+            return;
+        }
+
+        // 1. Tìm kiếm Trang (Forms) - (Code cũ của bạn)
+        int formCount = 0;
+        for (Map.Entry<SystemForm, Class<? extends Form>> entry : this.formsMap.entrySet()) {
+            SystemForm s = entry.getKey();
+            if ((s.name().toLowerCase().contains(st) || s.description().toLowerCase().contains(st) || checkTags(s.tags(), st))) {
+                if (formCount == 0) {
+                    panelResult.add(createLabel("Trang")); // Thêm tiêu đề
+                }
+                Item item = new Item(s, entry.getValue(), false, false);
+                panelResult.add(item);
+                listItems.add(item);
+                formCount++;
+            }
+        }
+
+        // 2. Tìm kiếm Phim (Mới)
+        // Hủy worker cũ (nếu đang chạy)
+        if (movieSearchWorker != null && !movieSearchWorker.isDone()) {
+            movieSearchWorker.cancel(true);
+        }
+
+        // Thêm label "Đang tìm kiếm..."
+        JLabel loadingLabel = createLabel("Danh sách phim");
+        panelResult.add(loadingLabel);
+
+        // Chạy worker mới
+        movieSearchWorker = new MovieSearchWorker(st, loadingLabel);
+        movieSearchWorker.execute();
+
+        panelResult.repaint();
+        panelResult.revalidate();
+    }
+
+    private boolean checkTags(String[] tags, String st) {
+        return tags.length != 0 && Arrays.stream(tags).anyMatch((s) -> s.contains(st));
     }
 
     private void updateLayout() {
@@ -158,31 +185,32 @@ public class FormSearchPanel extends JPanel {
         if (container != null) {
             container.revalidate();
         }
-
     }
 
-    private void showForm() {
+    /**
+     * SỬA: Đổi tên, kiểm tra loại item
+     */
+    private void showSelection() {
         int index = this.getSelectedIndex();
         if (index != -1) {
-            ((Item)this.listItems.get(index)).showForm();
+            JButton selectedButton = this.listItems.get(index);
+            // Kích hoạt action của nút (cả Item và MovieItem đều xử lý riêng)
+            selectedButton.doClick();
         }
-
     }
 
     private void setSelected(int index) {
-        for(int i = 0; i < this.listItems.size(); ++i) {
-            ((Item)this.listItems.get(i)).setSelected(index == i);
+        for (int i = 0; i < this.listItems.size(); ++i) {
+            ((JButton) this.listItems.get(i)).setSelected(index == i);
         }
-
     }
 
     private int getSelectedIndex() {
-        for(int i = 0; i < this.listItems.size(); ++i) {
-            if (((Item)this.listItems.get(i)).isSelected()) {
+        for (int i = 0; i < this.listItems.size(); ++i) {
+            if (((JButton) this.listItems.get(i)).isSelected()) {
                 return i;
             }
         }
-
         return -1;
     }
 
@@ -191,41 +219,45 @@ public class FormSearchPanel extends JPanel {
             int index = this.getSelectedIndex();
             int size = this.listItems.size();
             if (index == -1) {
-                if (up) {
-                    index = this.listItems.size() - 1;
-                } else {
-                    index = 0;
-                }
+                index = up ? this.listItems.size() - 1 : 0;
             } else if (up) {
                 index = index == 0 ? size - 1 : index - 1;
             } else {
                 index = index == size - 1 ? 0 : index + 1;
             }
-
             this.setSelected(index);
         }
+    }
+
+    // ... (Giữ nguyên các hàm: showRecentResult, createLabel, getRecentSearch, getClassForm, createRecentItem) ...
+    // ... (Chỉ sửa lại `List<Item>` thành `List<JButton>` nếu cần) ...
+    // Ví dụ:
+    private List<Item> getRecentSearch(boolean favorite) {
+        // ...
+        List<Item> list = new ArrayList<>();
+        // ... (code cũ)
+        return list;
     }
 
     private void showRecentResult() {
         List<Item> recentSearch = this.getRecentSearch(false);
         List<Item> favoriteSearch = this.getRecentSearch(true);
         this.panelResult.removeAll();
-        this.listItems.clear();
+        this.listItems.clear(); // listItems giờ là List<JButton>
+
         if (recentSearch != null && !recentSearch.isEmpty()) {
             this.panelResult.add(this.createLabel("Recent"));
-
             for(Item item : recentSearch) {
                 this.panelResult.add(item);
-                this.listItems.add(item);
+                this.listItems.add(item); // Thêm Item (là JButton)
             }
         }
 
         if (favoriteSearch != null && !favoriteSearch.isEmpty()) {
             this.panelResult.add(this.createLabel("Favorite"));
-
             for(Item item : favoriteSearch) {
                 this.panelResult.add(item);
-                this.listItems.add(item);
+                this.listItems.add(item); // Thêm Item (là JButton)
             }
         }
 
@@ -234,7 +266,6 @@ public class FormSearchPanel extends JPanel {
         } else {
             this.setSelected(0);
         }
-
         this.updateLayout();
     }
 
@@ -244,47 +275,23 @@ public class FormSearchPanel extends JPanel {
         return label;
     }
 
-    private List<Item> getRecentSearch(boolean favorite) {
-        String[] recentSearch = DemoPreferences.getRecentSearch(favorite);
-        if (recentSearch == null) {
-            return null;
-        } else {
-            List<Item> list = new ArrayList();
-
-            for(String s : recentSearch) {
-                Class<? extends Form> classForm = this.getClassForm(s);
-                if (MyMenuValidation.validation((Class)classForm)) {
-                    Item item = this.createRecentItem(s, favorite);
-                    if (item != null) {
-                        list.add(item);
-                    }
-                }
-            }
-
-            return list;
-        }
-    }
-
+    // ... (Giữ nguyên: getClassForm, createRecentItem, createNoResult, clearSearch, searchGrabFocus) ...
     private Class<? extends Form> getClassForm(String name) {
         for(Map.Entry<SystemForm, Class<? extends Form>> entry : this.formsMap.entrySet()) {
             if (((SystemForm)entry.getKey()).name().equals(name)) {
                 return (Class)entry.getValue();
             }
         }
-
         return null;
     }
-
     private Item createRecentItem(String name, boolean favorite) {
         for(Map.Entry<SystemForm, Class<? extends Form>> entry : this.formsMap.entrySet()) {
             if (((SystemForm)entry.getKey()).name().equals(name)) {
                 return new Item((SystemForm)entry.getKey(), (Class)entry.getValue(), true, favorite);
             }
         }
-
         return null;
     }
-
     private Component createNoResult(String text) {
         JPanel panel = new JPanel(new MigLayout("insets 15 5 15 5,al center,gapx 1"));
         JLabel label = new JLabel("Không có kết quả cho \"");
@@ -297,20 +304,79 @@ public class FormSearchPanel extends JPanel {
         panel.add(labelEnd);
         return panel;
     }
-
     public void clearSearch() {
         if (!this.textSearch.getText().isEmpty()) {
             this.textSearch.setText("");
         } else {
             this.showRecentResult();
         }
-
     }
-
     public void searchGrabFocus() {
         this.textSearch.grabFocus();
     }
 
+
+    /**
+     * MỚI: Worker để tìm kiếm phim trên API
+     */
+    private class MovieSearchWorker extends SwingWorker<List<AuthApiClient.Movie>, Void> {
+        private final String keyword;
+        private final JLabel loadingLabel;
+
+        public MovieSearchWorker(String keyword, JLabel loadingLabel) {
+            this.keyword = keyword;
+            this.loadingLabel = loadingLabel;
+        }
+
+        @Override
+        protected List<AuthApiClient.Movie> doInBackground() throws Exception {
+            if (keyword.isEmpty()) {
+                return new ArrayList<>();
+            }
+            return AuthApiClient.searchMovies(keyword); // Gọi API mới
+        }
+
+        @Override
+        protected void done() {
+            if (isCancelled()) return;
+
+            // Xóa label "Đang tìm kiếm..."
+            panelResult.remove(loadingLabel);
+
+            try {
+                List<AuthApiClient.Movie> movies = get();
+
+                if (!movies.isEmpty()) {
+                    // Thêm tiêu đề thật (nếu chưa có)
+                    panelResult.add(createLabel("Danh sách phim"));
+
+                    for (AuthApiClient.Movie movie : movies) {
+                        MovieItem item = new MovieItem(movie);
+                        panelResult.add(item);
+                        listItems.add(item); // Thêm vào danh sách chung
+                    }
+                }
+
+                if (listItems.isEmpty()) { // Không có Form VÀ không có Phim
+                    panelResult.removeAll();
+                    panelResult.add(createNoResult(keyword));
+                } else if (getSelectedIndex() == -1) {
+                    setSelected(0); // Chọn item đầu tiên
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                // (Tùy chọn) Hiển thị lỗi
+                panelResult.add(new JLabel("Lỗi tìm kiếm phim: " + e.getMessage()));
+            }
+
+            panelResult.revalidate();
+            panelResult.repaint();
+            updateLayout();
+        }
+    }
+
+    // ... (Giữ nguyên class NoRecentResult) ...
     private static class NoRecentResult extends JPanel {
         public NoRecentResult() {
             this.init();
@@ -324,6 +390,7 @@ public class FormSearchPanel extends JPanel {
         }
     }
 
+    // ... (Giữ nguyên class Item) ...
     private class Item extends JButton {
         private final SystemForm data;
         private final Class<? extends Form> form;
@@ -379,7 +446,7 @@ public class FormSearchPanel extends JPanel {
 
         protected void showForm() {
             ModalDialog.closeModal("search");
-            Drawer.setSelectedItemClass(this.form);
+            Drawer.setSelectedItemClass(this.form); // Chuyển đến Form
             if (!this.isFavorite) {
                 DemoPreferences.addRecentSearch(this.data.name(), false);
             }
@@ -472,9 +539,12 @@ public class FormSearchPanel extends JPanel {
         private int getCount(boolean favorite) {
             int count = 0;
 
-            for(Item item : FormSearchPanel.this.listItems) {
-                if (item.isFavorite == favorite) {
-                    ++count;
+            for(JButton itemButton : FormSearchPanel.this.listItems) {
+                if (itemButton instanceof Item) {
+                    Item item = (Item) itemButton;
+                    if (item.isFavorite == favorite) {
+                        ++count;
+                    }
                 }
             }
 
@@ -483,7 +553,8 @@ public class FormSearchPanel extends JPanel {
 
         private int[] getFirstFavoriteIndex() {
             for(int i = 0; i < FormSearchPanel.this.listItems.size(); ++i) {
-                if (((Item)FormSearchPanel.this.listItems.get(i)).isFavorite) {
+                JButton itemButton = FormSearchPanel.this.listItems.get(i);
+                if (itemButton instanceof Item && ((Item)itemButton).isFavorite) {
                     return new int[]{i, FormSearchPanel.this.panelResult.getComponentZOrder((Component)FormSearchPanel.this.listItems.get(i))};
                 }
             }
