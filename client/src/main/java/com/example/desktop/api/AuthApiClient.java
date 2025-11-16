@@ -12,14 +12,9 @@ import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.List;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.io.UnsupportedEncodingException;
-import java.util.Collections;
-
 public class AuthApiClient {
 
-    private static final String BASE_URL = "http://192.168.102.208:8080";
+    private static final String BASE_URL = "http://192.168.1.7:8080";
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final HttpClient client = HttpClient.newHttpClient();
 
@@ -260,48 +255,6 @@ public class AuthApiClient {
             // Ném lỗi với thông báo của server
             throw new IOException("HTTP " + response.statusCode() + ": " + response.body());
         }
-    }
-
-    /**
-     * HÀM MỚI: Tìm kiếm phim theo từ khóa
-     */
-    public static List<Movie> searchMovies(String keyword) throws IOException, InterruptedException {
-        // Mã hóa từ khóa để dùng trong URL (ví dụ: "avengers" -> "avengers")
-        String encodedKeyword;
-        try {
-            encodedKeyword = URLEncoder.encode(keyword, StandardCharsets.UTF_8.name());
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
-
-        String url = BASE_URL + "/api/movies/search?keyword=" + encodedKeyword;
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .GET()
-                .build();
-
-        HttpResponse<String> response =
-                client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() / 100 != 2) {
-            throw new IOException("HTTP " + response.statusCode() + ": " + response.body());
-        }
-
-        // Parse JSON (giống hệt hàm getMovies)
-        JsonNode root = mapper.readTree(response.body());
-        JsonNode dataNode = root.path("data");
-
-        if (dataNode.isMissingNode() || !dataNode.isArray()) {
-            if(root.isArray()){
-                return mapper.convertValue(root, new TypeReference<List<Movie>>() {});
-            }
-            return Collections.emptyList();
-        }
-
-        return mapper.convertValue(dataNode, new TypeReference<List<Movie>>() {});
     }
 
 

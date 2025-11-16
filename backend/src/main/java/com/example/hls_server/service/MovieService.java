@@ -11,4 +11,5 @@ public interface MovieService {
     BaseResponse<List<MovieDto>> getAllMovies();
     MovieDto getMovieById(Long id);
     List<MovieDto> getMoviesByGenreId(Long genreId);
+    BaseResponse<List<MovieDto>> searchMovies(String keyword);
 }

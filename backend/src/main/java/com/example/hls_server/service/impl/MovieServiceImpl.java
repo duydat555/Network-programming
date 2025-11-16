@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,7 +46,7 @@ public class MovieServiceImpl implements MovieService {
         // set genres
         if (request.getGenreIds() != null && !request.getGenreIds().isEmpty()) {
             List<Genre> genres = genreRepository.findAllById(request.getGenreIds());
-            movie.setGenres(genres.stream().collect(Collectors.toSet()));
+            movie.setGenres(new HashSet<>(genres));
         }
 
         Movie saved = movieRepository.save(movie);
@@ -87,6 +88,28 @@ public class MovieServiceImpl implements MovieService {
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public BaseResponse<List<MovieDto>> searchMovies(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return BaseResponse.<List<MovieDto>>builder()
+                    .success(false)
+                    .message("Từ khóa tìm kiếm không được để trống")
+                    .data(new ArrayList<>())
+                    .build();
+        }
+
+        List<MovieDto> movieList = movieRepository.findByTitleContainingIgnoreCase(keyword.trim())
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+
+        return BaseResponse.<List<MovieDto>>builder()
+                .success(true)
+                .message("Tìm kiếm thành công")
+                .data(movieList)
+                .build();
     }
 
     private MovieDto toDto(Movie movie) {

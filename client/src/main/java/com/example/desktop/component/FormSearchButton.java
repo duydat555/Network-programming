@@ -7,7 +7,7 @@ import net.miginfocom.swing.MigLayout;
 
 public class FormSearchButton extends JButton {
     public FormSearchButton() {
-        super("Tìm kiếm nhanh...", new FlatSVGIcon("raven/modal/demo/icons/search.svg", 0.4F));
+        super("Tìm kiếm phim...", new FlatSVGIcon("raven/modal/demo/icons/search.svg", 0.4F));
         this.init();
     }
 
