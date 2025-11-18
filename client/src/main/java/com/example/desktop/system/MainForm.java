@@ -1,11 +1,14 @@
 package com.example.desktop.system;
 
+import com.example.desktop.component.FormSearchButton;
+import com.example.desktop.form.MovieDetailForm;
+//import com.example.desktop.form.VideoPlayerDialog;
+import com.example.desktop.form.VideoPlayerForm;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.modal.Drawer;
 import raven.modal.demo.Demo;
-import com.example.desktop.component.FormSearchButton;
 import raven.modal.demo.component.RefreshLine;
 import raven.modal.demo.icons.SVGIconUIColor;
 
@@ -13,6 +16,13 @@ import javax.swing.*;
 import java.awt.*;
 
 public class MainForm extends JPanel {
+
+    private JPanel mainPanel;
+    private RefreshLine refreshLine;
+
+    private JButton buttonUndo;
+    private JButton buttonRedo;
+    private JButton buttonRefresh;
 
     public MainForm() {
         init();
@@ -36,14 +46,10 @@ public class MainForm extends JPanel {
         buttonRefresh = new JButton(new FlatSVGIcon("raven/modal/demo/icons/refresh.svg", 0.5f));
 
         // style
-        buttonDrawer.putClientProperty(FlatClientProperties.STYLE, "" +
-                "arc:10;");
-        buttonUndo.putClientProperty(FlatClientProperties.STYLE, "" +
-                "arc:10;");
-        buttonRedo.putClientProperty(FlatClientProperties.STYLE, "" +
-                "arc:10;");
-        buttonRefresh.putClientProperty(FlatClientProperties.STYLE, "" +
-                "arc:10;");
+        buttonDrawer.putClientProperty(FlatClientProperties.STYLE, "arc:10;");
+        buttonUndo.putClientProperty(FlatClientProperties.STYLE, "arc:10;");
+        buttonRedo.putClientProperty(FlatClientProperties.STYLE, "arc:10;");
+        buttonRefresh.putClientProperty(FlatClientProperties.STYLE, "arc:10;");
 
         buttonDrawer.addActionListener(e -> {
             if (Drawer.isOpen()) {
@@ -73,29 +79,22 @@ public class MainForm extends JPanel {
 
         // demo version
         JLabel lbDemoVersion = new JLabel("Demo: v" + Demo.DEMO_VERSION);
-        lbDemoVersion.putClientProperty(FlatClientProperties.STYLE, "" +
-                "foreground:$Label.disabledForeground;");
+        lbDemoVersion.putClientProperty(FlatClientProperties.STYLE, "foreground:$Label.disabledForeground;");
         lbDemoVersion.setIcon(new SVGIconUIColor("raven/modal/demo/icons/git.svg", 1f, "Label.disabledForeground"));
         panel.add(lbDemoVersion);
 
         // java version
         String javaVendor = System.getProperty("java.vendor");
-        if (javaVendor.equals("Oracle Corporation")) {
+        if ("Oracle Corporation".equals(javaVendor)) {
             javaVendor = "";
         }
         String java = javaVendor + " v" + System.getProperty("java.version").trim();
-        String st = "Running on: Java %s";
-        JLabel lbJava = new JLabel(String.format(st, java));
-        lbJava.putClientProperty(FlatClientProperties.STYLE, "" +
-                "foreground:$Label.disabledForeground;");
+        JLabel lbJava = new JLabel("Running on: Java " + java);
+        lbJava.putClientProperty(FlatClientProperties.STYLE, "foreground:$Label.disabledForeground;");
         lbJava.setIcon(new SVGIconUIColor("raven/modal/demo/icons/java.svg", 1f, "Label.disabledForeground"));
         panel.add(lbJava);
 
         panel.add(new JSeparator(JSeparator.VERTICAL));
-
-        // memory
-//        MemoryBar memoryBar = new MemoryBar();
-//        panel.add(memoryBar);
         return panel;
     }
 
@@ -117,16 +116,43 @@ public class MainForm extends JPanel {
         return mainPanel;
     }
 
+    // ==========================================================================
+    // PHẦN QUAN TRỌNG: LOGIC CHUYỂN FORM VÀ XỬ LÝ SỰ KIỆN XEM PHIM
+    // ==========================================================================
     public void setForm(Form form) {
+        // 1. Xử lý sự kiện khi đang ở trang Chi tiết phim
+        if (form instanceof MovieDetailForm) {
+            MovieDetailForm detailForm = (MovieDetailForm) form;
+
+            detailForm.setOnWatchMovie(movie -> {
+                if (movie.getVideoUrl() == null || movie.getVideoUrl().isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Link phim lỗi!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                // THAY ĐỔI QUAN TRỌNG Ở ĐÂY:
+                // Thay vì mở new VideoPlayerDialog (cửa sổ rời),
+                // Ta chuyển hướng Form chính sang VideoPlayerForm (nhúng vào trong)
+
+                VideoPlayerForm playerForm = new VideoPlayerForm(movie.getTitle(), movie.getVideoUrl());
+
+                // Gọi hàm của FormManager để chuyển trang (nếu bạn dùng thư viện quản lý form)
+                // Hoặc gọi đệ quy chính hàm setForm này để đổi giao diện
+                FormManager.showForm(playerForm);
+            });
+        }
+
+        // 2. Logic hiển thị Form (Giữ nguyên code cũ của bạn)
         mainPanel.removeAll();
         mainPanel.add(form);
         mainPanel.repaint();
         mainPanel.revalidate();
 
-        // check button
+        // 3. Cập nhật trạng thái nút Undo/Redo
         buttonUndo.setEnabled(FormManager.FORMS.isUndoAble());
         buttonRedo.setEnabled(FormManager.FORMS.isRedoAble());
-        // check component orientation and update
+
+        // 4. Cập nhật hướng chữ (LTR/RTL) nếu cần
         if (mainPanel.getComponentOrientation().isLeftToRight() != form.getComponentOrientation().isLeftToRight()) {
             applyComponentOrientation(mainPanel.getComponentOrientation());
         }
@@ -135,11 +161,4 @@ public class MainForm extends JPanel {
     public void refresh() {
         refreshLine.refresh();
     }
-
-    private JPanel mainPanel;
-    private RefreshLine refreshLine;
-
-    private JButton buttonUndo;
-    private JButton buttonRedo;
-    private JButton buttonRefresh;
 }
