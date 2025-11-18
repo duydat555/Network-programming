@@ -41,6 +41,7 @@ public class MovieServiceImpl implements MovieService {
         movie.setDurationMin(request.getDurationMin());
         movie.setVideoUrl(request.getVideoUrl());
         movie.setPosterUrl(request.getPosterUrl());
+        movie.setBackdropUrl(request.getBackdropUrl());
         movie.setCreatedAt(LocalDateTime.now());
 
         // set genres
@@ -131,6 +132,7 @@ public class MovieServiceImpl implements MovieService {
                 .durationMin(movie.getDurationMin())
                 .videoUrl(movie.getVideoUrl())
                 .posterUrl(movie.getPosterUrl())
+                .backdropUrl(movie.getBackdropUrl())
                 .genres(genreNames)
                 .build();
     }

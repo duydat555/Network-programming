@@ -81,6 +81,7 @@ public class MovieApi {
             movie.setDurationMin(movieNode.path("durationMin").asInt());
             movie.setVideoUrl(movieNode.path("videoUrl").asText());
             movie.setPosterUrl(movieNode.path("posterUrl").asText());
+            movie.setBackdropUrl(movieNode.path("backdropUrl").asText());
 
             // Parse genres
             List<String> genres = new ArrayList<>();

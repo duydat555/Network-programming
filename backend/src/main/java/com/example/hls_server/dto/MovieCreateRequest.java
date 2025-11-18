@@ -18,5 +18,6 @@ public class MovieCreateRequest {
     private Integer durationMin;
     private String videoUrl;
     private String posterUrl;
+    private String backdropUrl;
     private List<Long> genreIds;
 }

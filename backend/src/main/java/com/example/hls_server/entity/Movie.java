@@ -38,6 +38,10 @@ public class Movie {
     @Column(name = "poster_url")
     private String posterUrl;
 
+    @Lob
+    @Column(name = "backdrop_url")
+    private String backdropUrl;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
