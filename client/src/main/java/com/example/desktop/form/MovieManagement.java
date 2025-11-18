@@ -56,7 +56,7 @@ public class MovieManagement extends Form {
         toolBar.add(deleteButton);
 
         // 2. Bảng dữ liệu
-        String[] columnNames = {"ID", "Tên phim", "Năm", "Thời lượng (phút)", "Mô tả"};
+        String[] columnNames = {"ID", "Tên phim", "Năm", "Thời lượng (phút)", "Thể loại"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -108,12 +108,13 @@ public class MovieManagement extends Form {
                 try {
                     currentMovies = get(); // Lưu lại danh sách phim
                     for (AuthApiClient.Movie movie : currentMovies) {
+                        String genres = String.join(", ", movie.genres());
                         tableModel.addRow(new Object[]{
                                 movie.id(),
                                 movie.title(),
                                 movie.year(),
                                 movie.durationMin(),
-                                movie.description()
+                                genres
                         });
                     }
                 } catch (Exception e) {
