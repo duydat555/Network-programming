@@ -1,15 +1,15 @@
 package com.example.desktop.component;
 
 import com.example.desktop.api.AuthApiClient;
+import com.example.desktop.api.MovieApi;
+import com.example.desktop.model.Movie;
 import com.formdev.flatlaf.icons.FlatMenuArrowIcon;
 import net.miginfocom.swing.MigLayout;
+import raven.extras.AvatarIcon;
 import raven.modal.ModalDialog;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.net.URL;
 
 public class MovieItem extends JButton {
     private final AuthApiClient.Movie movie;
@@ -22,74 +22,67 @@ public class MovieItem extends JButton {
     }
 
     private void init() {
-        // Layout giống ảnh: [Poster] [Thông tin] [Mũi tên]
-        setLayout(new MigLayout("insets 5", "[40!][grow]push[]", "[grow]"));
+        // SỬA LỖI Ở ĐÂY: Thêm "aligny top"
+        // Lệnh này buộc TẤT CẢ nội dung (poster, text)
+        // phải được căn lên trên cùng của JButton cha.
+        setLayout(new MigLayout(
+                "insets 8, aligny top", // Thêm "aligny top" vào đây
+                "[60!][grow,fill]push[]",
+                "[][]"
+        ));
+
         setFocusable(false);
-        setHorizontalAlignment(10); // Left
+        setHorizontalAlignment(10);
         putClientProperty("FlatLaf.style", "background:null;arc:10;borderWidth:0;focusWidth:0;innerFocusWidth:0;[light]selectedBackground:lighten($Button.selectedBackground,9%)");
 
-        // 1. Poster
-        posterLabel = new JLabel();
-        posterLabel.setPreferredSize(new Dimension(40, 60)); // Poster nhỏ
-        posterLabel.setOpaque(true);
-        posterLabel.setBackground(UIManager.getColor("TextField.background")); // Màu nền placeholder
-        add(posterLabel, "cell 0 0 1 3, w 40!, h 60!"); // Span 3 hàng
+        posterLabel = new JLabel(new AvatarIcon(
+                getClass().getResource("/images/file.svg"), 60, 90, 8
+        ));
+        posterLabel.setBorder(null);
+        posterLabel.setOpaque(false);
+        posterLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        // 2. Thông tin
+        // "top" ở đây để poster căn trên so với 2 dòng text
+        add(posterLabel, "cell 0 0 1 2, top");
+
         JLabel titleLabel = new JLabel(movie.title());
         titleLabel.putClientProperty("FlatLaf.style", "font:bold");
-        add(titleLabel, "cell 1 0, wrap");
+        add(titleLabel, "cell 1 0, wmin 0, wrap");
 
         String subtext = movie.year() + " • " + movie.durationMin() + "m";
-        JLabel yearLabel = new JLabel(subtext);
-        yearLabel.putClientProperty("FlatLaf.style", "font: -2; foreground:$Label.disabledForeground;");
-        add(yearLabel, "cell 1 1, wrap");
+        if (!movie.genres().isEmpty()) {
+            subtext += " • " + String.join(", ", movie.genres());
+        }
+        JLabel subtextLabel = new JLabel(subtext);
+        subtextLabel.putClientProperty("FlatLaf.style", "font: -2; foreground:$Label.disabledForeground;");
+        add(subtextLabel, "cell 1 1, wmin 0, wrap");
 
-        String genres = String.join(", ", movie.genres());
-        JLabel genreLabel = new JLabel(genres);
-        genreLabel.putClientProperty("FlatLaf.style", "font: -2; foreground:$Label.disabledForeground;");
-        add(genreLabel, "cell 1 2, wrap");
+        add(new JLabel(new FlatMenuArrowIcon()), "cell 2 0 1 2, east");
 
-        // 3. Mũi tên
-        add(new JLabel(new FlatMenuArrowIcon()), "cell 2 0 1 3, east"); // Căn phải
-
-        // Sự kiện khi click
         addActionListener(e -> {
             System.out.println("Clicked movie: " + movie.title());
-            // Tạm thời chỉ đóng dialog
             ModalDialog.closeModal("search");
-            // TODO: Mở trang chi tiết phim (nếu có)
         });
     }
 
     private void loadPoster() {
-        // Tải ảnh bất đồng bộ
-        new SwingWorker<ImageIcon, Void>() {
-            @Override
-            protected ImageIcon doInBackground() throws Exception {
-                if (movie.posterUrl() != null && !movie.posterUrl().isEmpty()) {
-                    URL url = new URL(movie.posterUrl());
-                    BufferedImage img = ImageIO.read(url);
-                    if (img != null) {
-                        Image scaledImg = img.getScaledInstance(40, 60, Image.SCALE_SMOOTH);
-                        return new ImageIcon(scaledImg);
-                    }
-                }
-                return null;
-            }
+        if (movie.posterUrl() != null && !movie.posterUrl().isEmpty()) {
+            Movie movieModel = new Movie(
+                    movie.id(),
+                    movie.title(),
+                    movie.description(),
+                    movie.year(),
+                    movie.durationMin(),
+                    null,
+                    movie.posterUrl(),
+                    movie.genres()
+            );
 
-            @Override
-            protected void done() {
-                try {
-                    ImageIcon icon = get();
-                    if (icon != null) {
-                        posterLabel.setIcon(icon);
-                        posterLabel.setBackground(null); // Bỏ màu nền
-                    }
-                } catch (Exception e) {
-                    // Tải lỗi, không cần làm gì
-                }
-            }
-        }.execute();
+            MovieApi.loadPosterAsync(movieModel, () -> {
+                posterLabel.setIcon(new AvatarIcon(movieModel.getPoster(), 60, 90, 8));
+                posterLabel.revalidate();
+                posterLabel.repaint();
+            });
+        }
     }
 }
