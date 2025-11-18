@@ -4,7 +4,6 @@ import com.example.desktop.system.Form;
 import javax.swing.JLabel;
 import java.awt.BorderLayout;
 
-// (Tùy chọn) Thêm annotation này để FormSearch (Ctrl+F) có thể tìm thấy
 @raven.modal.demo.utils.SystemForm(name = "Thống kê", description = "Xem thống kê trang admin")
 public class AdminDashboard extends Form {
 

@@ -4,7 +4,9 @@ import com.example.desktop.api.MovieApi;
 import com.example.desktop.component.CardMovie;
 import com.example.desktop.layout.WrapLayout;
 import com.example.desktop.model.Movie;
+import com.example.desktop.system.AllForms;
 import com.example.desktop.system.Form;
+import com.example.desktop.system.FormManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -87,28 +89,26 @@ public class Dashboard extends Form {
     }
 
     private void showMovieDetails(Movie movie) {
-        StringBuilder details = new StringBuilder();
-        details.append("Tên phim: ").append(movie.getTitle()).append("\n");
-        details.append("Mô tả: ").append(movie.getDescription()).append("\n");
-
-        if (movie.getYear() != null) {
-            details.append("Năm: ").append(movie.getYear()).append("\n");
-        }
-
-        if (movie.getDurationMin() != null) {
-            details.append("Thời lượng: ").append(movie.getDurationMin()).append(" phút\n");
-        }
-
-        if (movie.getGenres() != null && !movie.getGenres().isEmpty()) {
-            details.append("Thể loại: ").append(String.join(", ", movie.getGenres())).append("\n");
-        }
-
-        JOptionPane.showMessageDialog(
-                Dashboard.this,
-                details.toString(),
-                "Chi tiết phim",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+        MovieDetailForm detailForm = (MovieDetailForm) AllForms.getForm(MovieDetailForm.class);
+        detailForm.bindMovie(movie);
+        detailForm.setBackgroundUrl("https://m.media-amazon.com/images/I/91WMenNUzEL.jpg");
+        detailForm.setOnWatchTrailer(m -> JOptionPane.showMessageDialog(
+                FormManager.getFrame(),
+                "Đang mở trailer cho: " + m.getTitle(),
+                "Trailer",
+                JOptionPane.INFORMATION_MESSAGE));
+        detailForm.setOnWatchMovie(m -> JOptionPane.showMessageDialog(
+                FormManager.getFrame(),
+                "Bắt đầu xem phim: " + m.getTitle(),
+                "Xem phim",
+                JOptionPane.INFORMATION_MESSAGE));
+        detailForm.setOnToggleFavorite(m -> JOptionPane.showMessageDialog(
+                FormManager.getFrame(),
+                "Đã thêm vào yêu thích: " + m.getTitle(),
+                "Yêu thích",
+                JOptionPane.INFORMATION_MESSAGE));
+        detailForm.updateFavoriteState(false);
+        FormManager.showForm(detailForm);
     }
 
     private void showError(String message) {
