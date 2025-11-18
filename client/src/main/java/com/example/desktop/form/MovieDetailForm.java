@@ -10,8 +10,6 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferedImage;
 import java.net.URL;
 import java.util.function.Consumer;
 
@@ -32,10 +30,11 @@ public class MovieDetailForm extends Form {
 
         // Card chứa nội dung (Glassmorphism - Nền đen trong suốt)
         JPanel card = new JPanel(new BorderLayout());
+        card.setOpaque(false);
+        card.setBackground(new Color(0, 0, 0, 0));
         card.putClientProperty(FlatClientProperties.STYLE,
                 "border:0,0,0,0;" +
-                        "arc:30;" +
-                        "background:rgba(20, 20, 20, 160)"); // Độ mờ 160 để nhìn xuyên thấu background tốt hơn
+                        "arc:30;");
 
         card.add(detailPanel, BorderLayout.CENTER);
 

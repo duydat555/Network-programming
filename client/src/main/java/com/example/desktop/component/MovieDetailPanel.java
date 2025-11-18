@@ -1,27 +1,26 @@
 package com.example.desktop.component;
 
-import com.example.desktop.api.MovieApi;
 import com.example.desktop.model.Movie;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.miginfocom.swing.MigLayout;
-import raven.extras.AvatarIcon;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
-import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * Rich presentation panel for movie detail pages.
+ * Fixed: Replaced ALL invalid 'transparent' colors in FlatLaf style with 'null'.
  */
 public class MovieDetailPanel extends JPanel {
 
-    private final JLabel posterLabel = new JLabel();
+    private static final Color TRANSPARENT = new Color(0, 0, 0, 0);
+
     private final JLabel titleLabel = new JLabel();
-    private final JPanel metaPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+    private final JPanel metaPanel = new TransparentPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final JTextArea descriptionArea = new JTextArea();
     private final JLabel ratingBadge = new JLabel();
 
@@ -32,85 +31,60 @@ public class MovieDetailPanel extends JPanel {
 
     public MovieDetailPanel() {
         setLayout(new BorderLayout());
-        setOpaque(false); // Panel chính trong suốt
+        setOpaque(false);
+        setBackground(TRANSPARENT);
         add(createSurface(), BorderLayout.CENTER);
     }
 
-    private JComponent createSurface() {
-        // Layout: Cột 1 (Poster) cố định 260px, Cột 2 (Nội dung) co giãn
-        JPanel surface = new JPanel(new MigLayout("fill, insets 30", "[260!]25[grow, fill]", "[top]5[]10[grow, fill]push[]"));
+    @Override
+    protected void paintComponent(Graphics g) {
+        // prevent default background fill
+    }
 
-        // --- SỬA ĐỔI TẠI ĐÂY ---
-        surface.setOpaque(false); // Để trong suốt
+    private JComponent createSurface() {
+        JPanel surface = new TransparentPanel(new MigLayout("fill, insets 30", "[grow, fill]", "[top]5[]10[grow, fill]push[]"));
+
+        // ✅ FIX: Thay "background:transparent;" bằng "background:null;"
         surface.putClientProperty(FlatClientProperties.STYLE,
                 "arc:25;" +
                         "border:20,20,20,20;" +
-                        "background:null;"); // Tắt màu nền trắng/xám
-        // -----------------------
+                        "background:null;");
 
-        // 1. POSTER (Cột 0, Hàng 0, Span 4 hàng dọc)
-        configurePoster();
-        surface.add(posterLabel, "cell 0 0 1 4, growy, top");
+        // 1. TITLE & RATING
+        titleLabel.putClientProperty(FlatClientProperties.STYLE, "font:bold +16; foreground:#FFFFFF;");
 
-        // 2. TITLE & RATING (Cột 1, Hàng 0)
-        titleLabel.putClientProperty(FlatClientProperties.STYLE, "font:bold +12; foreground:$Label.foreground;");
-
-        // Rating Badge: Giữ nền tối để chữ vàng/trắng luôn nổi bật
         ratingBadge.putClientProperty(FlatClientProperties.STYLE,
                 "font:bold +0;" +
                         "border:5,10,5,10;" +
                         "arc:15;" +
-                        "background:#222222;" + // Nền rất tối cho badge
+                        "background:#313131;" +
                         "foreground:#FFFFFF;");
 
-        surface.add(titleLabel, "cell 1 0, split 2, growx");
+        surface.add(titleLabel, "cell 0 0, split 2, growx");
         surface.add(ratingBadge, "gapleft push, wrap");
 
-        // 3. META INFO (Cột 1, Hàng 1)
+        // 2. META INFO
         metaPanel.setOpaque(false);
-        surface.add(metaPanel, "cell 1 1, growx, wrap");
+        metaPanel.setBackground(TRANSPARENT);
+        surface.add(metaPanel, "cell 0 1, growx, wrap");
 
-        // 4. DESCRIPTION (Cột 1, Hàng 2)
+        // 3. DESCRIPTION
         configureDescription();
-        JScrollPane scrollPane = new JScrollPane(descriptionArea);
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setOpaque(false);
-        surface.add(scrollPane, "cell 1 2, grow, hmin 100");
+        TransparentScrollPane scrollPane = new TransparentScrollPane(descriptionArea);
+        surface.add(scrollPane, "cell 0 2, grow, hmin 100");
 
-        // 5. ACTIONS (Cột 1, Hàng 3)
-        surface.add(createActions(), "cell 1 3, growx");
+        // 4. ACTIONS
+        surface.add(createActions(), "cell 0 3, growx");
 
         return surface;
     }
 
-    private void configurePoster() {
-        posterLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        posterLabel.putClientProperty(FlatClientProperties.STYLE,
-                "arc:30;" +
-                        "border:0,0,0,0;" +
-                        "background:null;"); // Poster không cần nền riêng
-        posterLabel.setPreferredSize(new Dimension(260, 360));
-        posterLabel.setMinimumSize(new Dimension(260, 360));
-        posterLabel.setIcon(createPlaceholderIcon());
-    }
-
-    private void configureDescription() {
-        descriptionArea.setWrapStyleWord(true);
-        descriptionArea.setLineWrap(true);
-        descriptionArea.setEditable(false);
-        descriptionArea.setOpaque(false);
-        descriptionArea.setFocusable(false);
-        descriptionArea.putClientProperty(FlatClientProperties.STYLE,
-                "font:+1;" +
-                        "foreground:$Label.foreground;");
-    }
-
     private JPanel createActions() {
-        JPanel panel = new JPanel(new MigLayout("insets 0", "[grow][grow][grow]", "[fill, 40!]"));
+        JPanel panel = new TransparentPanel(new MigLayout("insets 0", "[grow][grow][grow]", "[fill, 45!]"));
         panel.setOpaque(false);
+        panel.setBackground(TRANSPARENT);
 
-        styleGhostButton(trailerButton);
+        styleOutlineButton(trailerButton);
         stylePrimaryButton(watchButton);
         styleOutlineButton(favoriteButton);
 
@@ -120,14 +94,16 @@ public class MovieDetailPanel extends JPanel {
         return panel;
     }
 
-    private void styleGhostButton(JButton button) {
-        button.putClientProperty(FlatClientProperties.STYLE,
-                "arc:999;" +
-                        "margin:6,12,6,12;" +
-                        "background:null;" +
-                        "borderWidth:1;" +
-                        "focusWidth:0;" +
-                        "innerFocusWidth:0;");
+    private void configureDescription() {
+        descriptionArea.setWrapStyleWord(true);
+        descriptionArea.setLineWrap(true);
+        descriptionArea.setEditable(false);
+        descriptionArea.setOpaque(false);
+        descriptionArea.setBackground(TRANSPARENT);
+        descriptionArea.setFocusable(false);
+        descriptionArea.putClientProperty(FlatClientProperties.STYLE,
+                "font:+2;" +
+                        "foreground:#FFFFFF;");
     }
 
     private void stylePrimaryButton(JButton button) {
@@ -157,7 +133,6 @@ public class MovieDetailPanel extends JPanel {
             titleLabel.setText("Chưa xác định");
             descriptionArea.setText("Chọn một bộ phim để xem chi tiết.");
             metaPanel.removeAll();
-            posterLabel.setIcon(createPlaceholderIcon());
             ratingBadge.setVisible(false);
             revalidate();
             repaint();
@@ -177,7 +152,7 @@ public class MovieDetailPanel extends JPanel {
         }
         List<String> genres = movie.getGenres();
         if (genres != null && !genres.isEmpty()) {
-            metaPanel.add(createChip(String.join(" • ", genres.subList(0, Math.min(3, genres.size())))));
+            metaPanel.add(createChip(String.join(" • ", genres.subList(0, Math.min(5, genres.size())))));
         }
         metaPanel.revalidate();
         metaPanel.repaint();
@@ -189,8 +164,6 @@ public class MovieDetailPanel extends JPanel {
                 score
         );
         ratingBadge.setText(htmlRating);
-
-        updatePoster(movie);
     }
 
     public void updateFavoriteState(boolean favorite) {
@@ -202,48 +175,15 @@ public class MovieDetailPanel extends JPanel {
         );
     }
 
-    private void updatePoster(Movie movie) {
-        if (movie.getPoster() != null) {
-            posterLabel.setIcon(new AvatarIcon(movie.getPoster(), 260, 360, 30));
-            return;
-        }
-        posterLabel.setIcon(createPlaceholderIcon());
-        MovieApi.loadPosterAsync(movie, () -> posterLabel.setIcon(new AvatarIcon(movie.getPoster(), 260, 360, 30)));
-    }
-
     private JLabel createChip(String text) {
         JLabel label = new JLabel(text);
-        // Chip cũng cần background bán trong suốt nếu muốn đẹp trên nền ảnh
         label.putClientProperty(FlatClientProperties.STYLE,
                 "border:4,10,4,10;" +
                         "arc:10;" +
                         "font:medium;" +
-                        "background:rgba(100, 100, 100, 80);" + // Màu xám trong suốt
+                        "background:rgba(100, 100, 100, 80);" +
                         "foreground:#FFFFFF;");
         return label;
-    }
-
-    private ImageIcon createPlaceholderIcon() {
-        BufferedImage img = new BufferedImage(260, 360, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = img.createGraphics();
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-        g2.setColor(new Color(30, 30, 30, 50));
-        g2.fillRoundRect(0, 0, img.getWidth(), img.getHeight(), 30, 30);
-
-        Stroke dashed = new BasicStroke(2, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0);
-        g2.setStroke(dashed);
-        g2.setColor(new Color(200, 200, 200, 100));
-        g2.drawRoundRect(1, 1, img.getWidth()-2, img.getHeight()-2, 30, 30);
-
-        g2.setColor(new Color(200, 200, 200));
-        g2.setFont(g2.getFont().deriveFont(Font.BOLD, 16f));
-
-        String text = "No Poster";
-        FontMetrics fm = g2.getFontMetrics();
-        g2.drawString(text, (img.getWidth() - fm.stringWidth(text)) / 2f, (img.getHeight() / 2f) + 5);
-        g2.dispose();
-        return new ImageIcon(img);
     }
 
     private double computeRating(Movie movie) {
@@ -271,6 +211,45 @@ public class MovieDetailPanel extends JPanel {
         }
         if (action != null) {
             button.addActionListener(action);
+        }
+    }
+
+    private static class TransparentPanel extends JPanel {
+        TransparentPanel(LayoutManager layout) {
+            super(layout);
+            setOpaque(false);
+            setBackground(TRANSPARENT);
+        }
+
+        @Override
+        public boolean isOpaque() {
+            return false;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+        }
+    }
+
+    private static class TransparentScrollPane extends JScrollPane {
+        TransparentScrollPane(Component view) {
+            super(view);
+            setBorder(BorderFactory.createEmptyBorder());
+            setOpaque(false);
+            setBackground(TRANSPARENT);
+            getViewport().setOpaque(false);
+            getViewport().setBackground(TRANSPARENT);
+            getViewport().setBorder(null);
+            setViewportBorder(null);
+        }
+
+        @Override
+        public boolean isOpaque() {
+            return false;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
         }
     }
 }
