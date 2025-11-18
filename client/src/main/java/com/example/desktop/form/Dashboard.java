@@ -91,7 +91,8 @@ public class Dashboard extends Form {
     private void showMovieDetails(Movie movie) {
         MovieDetailForm detailForm = (MovieDetailForm) AllForms.getForm(MovieDetailForm.class);
         detailForm.bindMovie(movie);
-        detailForm.setBackgroundUrl("https://m.media-amazon.com/images/I/91WMenNUzEL.jpg");
+        detailForm.setBackgroundUrl(movie.getBackdropUrl());
+        System.out.println(movie.getBackdropUrl());
         detailForm.setOnWatchTrailer(m -> JOptionPane.showMessageDialog(
                 FormManager.getFrame(),
                 "Đang mở trailer cho: " + m.getTitle(),

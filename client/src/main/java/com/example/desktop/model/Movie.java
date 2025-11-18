@@ -12,14 +12,16 @@ public class Movie {
     private Integer durationMin;
     private String videoUrl;
     private String posterUrl;
+    private String backdropUrl;
     private List<String> genres;
     private ImageIcon poster;
+    private ImageIcon backdrop;
 
     public Movie() {
     }
 
     public Movie(Long id, String title, String description, Integer year, Integer durationMin,
-                 String videoUrl, String posterUrl, List<String> genres) {
+                 String videoUrl, String backdropUrl, String posterUrl, List<String> genres) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -27,14 +29,16 @@ public class Movie {
         this.durationMin = durationMin;
         this.videoUrl = videoUrl;
         this.posterUrl = posterUrl;
+        this.backdropUrl = backdropUrl;
         this.genres = genres;
     }
 
     // Keep old constructor for backward compatibility
-    public Movie(String name, String description, ImageIcon poster) {
+    public Movie(String name, String description, ImageIcon poster, ImageIcon backdrop) {
         this.title = name;
         this.description = description;
         this.poster = poster;
+        this.backdrop = backdrop;
     }
 
     public Long getId() {
@@ -110,6 +114,10 @@ public class Movie {
         this.genres = genres;
     }
 
+    public String getBackdropUrl() { return backdropUrl; }
+
+    public void setBackdropUrl(String backdropUrl) { this.backdropUrl = backdropUrl; }
+
     public ImageIcon getPoster() {
         return poster;
     }
@@ -117,5 +125,6 @@ public class Movie {
     public void setPoster(ImageIcon poster) {
         this.poster = poster;
     }
+
 }
 
