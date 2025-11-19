@@ -2,18 +2,15 @@ package com.example.desktop.form;
 
 import com.example.desktop.system.Form;
 import javafx.application.Platform;
-import javafx.concurrent.Worker;
 import javafx.embed.swing.JFXPanel;
 import javafx.scene.Scene;
 import javafx.scene.paint.Color;
+import javafx.scene.web.PromptData;
 import javafx.scene.web.WebEngine;
 import javafx.scene.web.WebView;
-import netscape.javascript.JSObject;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 
 public class VideoPlayerForm extends Form {
 
@@ -26,8 +23,10 @@ public class VideoPlayerForm extends Form {
 
     // --- BIẾN XỬ LÝ FULLSCREEN ---
     private boolean isFullscreen = false;
-    private JDialog fullScreenDialog; // Dùng Dialog để đè lên tất cả
-    private Container originalParent; // Lưu cha cũ để quay về
+    private JWindow fullScreenWindow;
+    private JFXPanel fullScreenJFXPanel; // JFXPanel riêng cho fullscreen
+    private WebView fullScreenWebView;
+    private WebEngine fullScreenEngine;
 
     public VideoPlayerForm(String movieTitle, String videoUrl) {
         this.movieTitle = movieTitle;
@@ -53,93 +52,260 @@ public class VideoPlayerForm extends Form {
 
         engine = webView.getEngine();
 
-        engine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
-            if (newState == Worker.State.SUCCEEDED) {
-                JSObject window = (JSObject) engine.executeScript("window");
-                window.setMember("javaApp", new JavaConnector());
+        // Set up prompt handler to communicate with JavaScript
+        engine.setPromptHandler((PromptData param) -> {
+            String command = param.getMessage();
+            if ("toggleFullscreen".equals(command)) {
+                SwingUtilities.invokeLater(() -> {
+                    if (isFullscreen) {
+                        exitFullscreen();
+                    } else {
+                        enterFullscreen();
+                    }
+                });
+                return "OK";
             }
+            return null;
         });
 
         loadCustomPlayer(engine);
     }
 
     // =================================================================
-    // LỚP CẦU NỐI & LOGIC FULLSCREEN (ĐÃ SỬA ĐỔI MẠNH HƠN)
+    // LOGIC FULLSCREEN
     // =================================================================
-    public class JavaConnector {
-        public void toggleFullscreen() {
-            // Đảm bảo chạy trên luồng giao diện Swing
-            SwingUtilities.invokeLater(() -> {
-                if (isFullscreen) {
-                    exitFullscreen();
-                } else {
-                    enterFullscreen();
-                }
-            });
-        }
-    }
 
     private void enterFullscreen() {
         System.out.println("Bắt đầu vào Fullscreen...");
 
-        // 1. Tìm cửa sổ gốc (MainFrame) để làm cha cho Dialog (tránh lỗi minimize)
+        // 1. Tìm cửa sổ gốc (MainFrame) để làm owner
         Window windowAncestor = SwingUtilities.getWindowAncestor(this);
         Frame parentFrame = (windowAncestor instanceof Frame) ? (Frame) windowAncestor : null;
 
-        // 2. Lưu lại trạng thái cũ
-        originalParent = jfxPanel.getParent();
+        // 2. Đánh dấu trạng thái fullscreen
         isFullscreen = true;
 
-        // 3. Gỡ JFXPanel ra khỏi Form hiện tại
-        this.remove(jfxPanel);
-        this.revalidate();
-        this.repaint(); // Vẽ lại để xóa vùng đen cũ
+        // 3. Lấy thời gian hiện tại của video gốc
+        final double[] currentTime = {0};
+        final boolean[] isPaused = {true};
 
-        // 4. Tạo JDialog Fullscreen (Thay vì JFrame)
-        fullScreenDialog = new JDialog(parentFrame, true); // true = modal (chặn click bên dưới)
-        fullScreenDialog.setUndecorated(true); // Không viền
-        fullScreenDialog.setBackground(java.awt.Color.BLACK);
-        fullScreenDialog.setLayout(new BorderLayout());
-        fullScreenDialog.add(jfxPanel, BorderLayout.CENTER);
-
-        // Cài đặt để Dialog phủ kín màn hình thủ công
-        Toolkit toolkit = Toolkit.getDefaultToolkit();
-        fullScreenDialog.setSize(toolkit.getScreenSize());
-        fullScreenDialog.setLocation(0, 0);
-        fullScreenDialog.setAlwaysOnTop(true); // QUAN TRỌNG: Luôn nổi lên trên
-
-        // Xử lý khi người dùng bấm Alt+F4 hoặc đóng dialog
-        fullScreenDialog.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                exitFullscreen();
+        Platform.runLater(() -> {
+            String script = "video.currentTime";
+            Object time = engine.executeScript(script);
+            if (time != null) {
+                currentTime[0] = ((Number) time).doubleValue();
             }
-        });
 
-        // 5. Hiển thị
-        fullScreenDialog.setVisible(true);
-        jfxPanel.requestFocus(); // Focus lại để nhận phím
+            Object pausedState = engine.executeScript("video.paused");
+            if (pausedState != null) {
+                isPaused[0] = (Boolean) pausedState;
+            }
+
+            // TẠM DỪNG video gốc để giảm lag
+            engine.executeScript("video.pause()");
+
+            System.out.println("Current video time: " + currentTime[0] + ", paused: " + isPaused[0]);
+
+            // 4. Tạo JFXPanel mới cho fullscreen
+            SwingUtilities.invokeLater(() -> {
+                fullScreenJFXPanel = new JFXPanel();
+
+                // 5. Tạo JWindow Fullscreen
+                fullScreenWindow = new JWindow(parentFrame);
+                fullScreenWindow.setBackground(java.awt.Color.BLACK);
+                fullScreenWindow.setLayout(new BorderLayout());
+                fullScreenWindow.add(fullScreenJFXPanel, BorderLayout.CENTER);
+
+                // Set fullscreen size
+                fullScreenWindow.setAlwaysOnTop(true);
+                Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+                fullScreenWindow.setSize(screenSize);
+                fullScreenWindow.setLocation(0, 0);
+
+                // 6. Khởi tạo JavaFX cho fullscreen panel
+                Platform.runLater(() -> {
+                    fullScreenWebView = new WebView();
+                    fullScreenWebView.setContextMenuEnabled(false);
+
+                    Scene scene = new Scene(fullScreenWebView, Color.BLACK);
+                    fullScreenJFXPanel.setScene(scene);
+
+                    fullScreenEngine = fullScreenWebView.getEngine();
+
+                    // Set up prompt handler cho fullscreen
+                    fullScreenEngine.setPromptHandler((PromptData param) -> {
+                        String command = param.getMessage();
+                        if ("toggleFullscreen".equals(command)) {
+                            SwingUtilities.invokeLater(this::exitFullscreen);
+                            return "OK";
+                        }
+                        return null;
+                    });
+
+                    // Load player HTML
+                    loadCustomPlayer(fullScreenEngine);
+
+                    // Đợi video load xong rồi seek đến vị trí cũ
+                    final double timeToSeek = currentTime[0];
+                    final boolean shouldPlay = !isPaused[0];
+
+                    fullScreenEngine.getLoadWorker().stateProperty().addListener((_obs, _oldState, newState) -> {
+                        if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
+                            Platform.runLater(() -> {
+                                try {
+                                    // Kiểm tra null trước khi thao tác
+                                    if (fullScreenEngine == null) {
+                                        System.out.println("Fullscreen engine is null, user may have exited fullscreen");
+                                        return;
+                                    }
+
+                                    // Đợi video element ready
+                                    Thread.sleep(800);
+
+                                    // Kiểm tra lại sau khi sleep
+                                    if (fullScreenEngine == null) {
+                                        return;
+                                    }
+
+                                    // Seek đến vị trí cũ
+                                    if (timeToSeek > 0) {
+                                        fullScreenEngine.executeScript("video.currentTime = " + timeToSeek);
+
+                                        // Đợi video buffer tại vị trí mới
+                                        if (fullScreenEngine != null) {
+                                            fullScreenEngine.executeScript("""
+                                                video.addEventListener('canplay', function onCanPlay() {
+                                                    video.removeEventListener('canplay', onCanPlay);
+                                                    console.log('Video ready to play at: ' + video.currentTime);
+                                                }, { once: true });
+                                            """);
+                                        }
+                                    }
+
+                                    // Tiếp tục phát nếu đang phát
+                                    if (shouldPlay) {
+                                        // Đợi thêm một chút để video buffer
+                                        Thread.sleep(500);
+
+                                        // Kiểm tra null trước khi play
+                                        if (fullScreenEngine != null) {
+                                            fullScreenEngine.executeScript("video.play()");
+                                        }
+                                    }
+
+                                    System.out.println("Fullscreen video synced to time: " + timeToSeek);
+                                } catch (Exception e) {
+                                    System.err.println("Error syncing fullscreen video: " + e.getMessage());
+                                }
+                            });
+                        }
+                    });
+                });
+
+                // 7. Hiển thị window
+                SwingUtilities.invokeLater(() -> {
+                    fullScreenWindow.setVisible(true);
+                    fullScreenWindow.toFront();
+                    fullScreenJFXPanel.requestFocusInWindow();
+                });
+
+                System.out.println("Fullscreen window đã hiển thị");
+            });
+        });
     }
 
     private void exitFullscreen() {
         System.out.println("Thoát Fullscreen...");
 
-        if (fullScreenDialog != null) {
-            // 1. Gỡ JFXPanel ra khỏi Dialog
-            fullScreenDialog.remove(jfxPanel);
-
-            // 2. Tắt Dialog
-            fullScreenDialog.dispose();
-            fullScreenDialog = null;
+        if (fullScreenWindow == null || fullScreenEngine == null) {
+            System.err.println("Fullscreen components already cleaned up");
+            isFullscreen = false;
+            return;
         }
 
-        // 3. Trả JFXPanel về Form cũ
-        this.add(jfxPanel, BorderLayout.CENTER);
-        this.revalidate();
-        this.repaint();
+        // 1. Lấy thời gian hiện tại từ fullscreen video TRƯỚC KHI cleanup
+        Platform.runLater(() -> {
+            try {
+                Object time = fullScreenEngine.executeScript("video.currentTime");
+                Object pausedState = fullScreenEngine.executeScript("video.paused");
 
-        isFullscreen = false;
-        jfxPanel.requestFocus();
+                final double currentTime = (time != null) ? ((Number) time).doubleValue() : 0;
+                final boolean isPaused = (pausedState != null) ? (Boolean) pausedState : true;
+
+                System.out.println("Fullscreen video time before exit: " + currentTime + ", paused: " + isPaused);
+
+                // 2. Cleanup fullscreen window TRƯỚC (để ẩn window ngay)
+                SwingUtilities.invokeLater(() -> {
+                    if (fullScreenWindow != null) {
+                        fullScreenWindow.setVisible(false);
+                        fullScreenWindow.remove(fullScreenJFXPanel);
+                        fullScreenWindow.dispose();
+                        fullScreenWindow = null;
+                    }
+
+                    isFullscreen = false;
+                    System.out.println("Fullscreen window disposed");
+                });
+
+                // 3. Sync time về video gốc SAU KHI đã lấy giá trị
+                Platform.runLater(() -> {
+                    try {
+                        // Kiểm tra engine gốc còn tồn tại không
+                        if (engine == null) {
+                            System.err.println("Original engine is null, cannot sync time");
+                            return;
+                        }
+
+                        // Sync thời gian
+                        if (currentTime > 0) {
+                            engine.executeScript("video.currentTime = " + currentTime);
+                        }
+
+                        // Tiếp tục phát nếu đang phát
+                        if (!isPaused) {
+                            engine.executeScript("video.play()");
+                        }
+
+                        System.out.println("Synced time back to original video: " + currentTime);
+
+                        // 4. Cleanup fullscreen JavaFX components SAU CÙNG
+                        Platform.runLater(() -> {
+                            try {
+                                if (fullScreenEngine != null) {
+                                    fullScreenEngine.load(null);
+                                    fullScreenEngine = null;
+                                }
+                                if (fullScreenWebView != null) {
+                                    fullScreenWebView = null;
+                                }
+                                if (fullScreenJFXPanel != null) {
+                                    fullScreenJFXPanel.setScene(null);
+                                    fullScreenJFXPanel = null;
+                                }
+                                System.out.println("Fullscreen JavaFX resources cleaned up");
+                            } catch (Exception cleanupEx) {
+                                System.err.println("Error during cleanup: " + cleanupEx.getMessage());
+                            }
+                        });
+
+                    } catch (Exception e) {
+                        System.err.println("Error syncing video time: " + e.getMessage());
+                    }
+                });
+
+            } catch (Exception e) {
+                System.err.println("Error getting fullscreen video state: " + e.getMessage());
+                // Cleanup anyway
+                SwingUtilities.invokeLater(() -> {
+                    if (fullScreenWindow != null) {
+                        fullScreenWindow.setVisible(false);
+                        fullScreenWindow.dispose();
+                        fullScreenWindow = null;
+                    }
+                    isFullscreen = false;
+                });
+            }
+        });
     }
 
     // ... GIỮ NGUYÊN PHẦN HTML/CSS KHÔNG ĐỔI ...
@@ -204,30 +370,43 @@ public class VideoPlayerForm extends Form {
 
                 <script>
                     var video = document.getElementById('video');
-                    var videoSrc = '__VIDEO_URL__'; 
+                    var videoSrc = '__VIDEO_URL__';
                     var playIcon = document.getElementById('play-icon');
                     var seekBar = document.getElementById('seek-bar');
                     var volSlider = document.getElementById('volume-slider');
                     var container = document.getElementById('player-container');
                     var hideTimer;
 
+                    // Tối ưu HLS.js config để giảm lag
                     if (Hls.isSupported()) {
-                        var hls = new Hls();
+                        var hls = new Hls({
+                            maxBufferLength: 30,
+                            maxMaxBufferLength: 60,
+                            maxBufferSize: 60 * 1000 * 1000,
+                            maxBufferHole: 0.5,
+                            lowLatencyMode: false,
+                            backBufferLength: 90
+                        });
                         hls.loadSource(videoSrc);
                         hls.attachMedia(video);
+                        
+                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                            console.log('HLS manifest loaded');
+                        });
                     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                         video.src = videoSrc;
                     }
+                    
+                    // Preload video để giảm lag khi seek
+                    video.preload = 'auto';
 
                     function togglePlay() {
-                        if (video.paused) { video.play(); playIcon.className = 'fas fa-pause'; } 
+                        if (video.paused) { video.play(); playIcon.className = 'fas fa-pause'; }
                         else { video.pause(); playIcon.className = 'fas fa-play'; }
                     }
 
                     function callJavaFullscreen() {
-                        if (window.javaApp) {
-                            window.javaApp.toggleFullscreen();
-                        }
+                        prompt('toggleFullscreen');
                     }
 
                     video.addEventListener('timeupdate', function() {
@@ -236,20 +415,20 @@ public class VideoPlayerForm extends Form {
                             document.getElementById('current-time').innerText = formatTime(video.currentTime);
                         }
                     });
-                    
-                    video.addEventListener('loadedmetadata', function() { 
+
+                    video.addEventListener('loadedmetadata', function() {
                         seekBar.max = video.duration;
                         document.getElementById('duration').innerText = formatTime(video.duration);
                     });
-                    
+
                     video.addEventListener('ended', function() {
-                        playIcon.className = 'fas fa-rotate-right'; 
+                        playIcon.className = 'fas fa-rotate-right';
                         container.classList.remove('hide-controls');
                     });
 
                     seekBar.addEventListener('input', function() { video.currentTime = this.value; });
                     volSlider.addEventListener('input', function() { video.volume = this.value; });
-                    
+
                     function toggleMute() {
                         video.muted = !video.muted;
                         document.getElementById('vol-icon').className = video.muted ? 'fas fa-volume-xmark' : 'fas fa-volume-high';
@@ -266,8 +445,8 @@ public class VideoPlayerForm extends Form {
                     container.addEventListener('mousemove', function() {
                         container.classList.remove('hide-controls');
                         clearTimeout(hideTimer);
-                        hideTimer = setTimeout(() => { 
-                            if(!video.paused) container.classList.add('hide-controls'); 
+                        hideTimer = setTimeout(() => {
+                            if(!video.paused) container.classList.add('hide-controls');
                         }, 3000);
                     });
                 </script>
@@ -284,7 +463,7 @@ public class VideoPlayerForm extends Form {
 
     @Override
     public void removeNotify() {
-        // Quan trọng: Đảm bảo tắt Dialog nếu người dùng chuyển trang khi đang Fullscreen
+        // Quan trọng: Đảm bảo tắt Window nếu người dùng chuyển trang khi đang Fullscreen
         if (isFullscreen) {
             exitFullscreen();
         }

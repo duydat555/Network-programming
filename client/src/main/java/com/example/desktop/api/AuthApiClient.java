@@ -268,6 +268,7 @@ public class AuthApiClient {
             int year,
             int durationMin,
             String videoUrl,
+            String backdropUrl,
             String posterUrl,
             List<String> genres
     ) {}
@@ -278,6 +279,7 @@ public class AuthApiClient {
             int year,
             int durationMin,
             String videoUrl,
+            String backdropUrl,
             String posterUrl,
             List<String> genres
     ) {}

@@ -92,7 +92,6 @@ public class Dashboard extends Form {
         MovieDetailForm detailForm = (MovieDetailForm) AllForms.getForm(MovieDetailForm.class);
         detailForm.bindMovie(movie);
         detailForm.setBackgroundUrl(movie.getBackdropUrl());
-        System.out.println(movie.getBackdropUrl());
         detailForm.setOnWatchTrailer(m -> JOptionPane.showMessageDialog(
                 FormManager.getFrame(),
                 "Đang mở trailer cho: " + m.getTitle(),
@@ -100,7 +99,7 @@ public class Dashboard extends Form {
                 JOptionPane.INFORMATION_MESSAGE));
         detailForm.setOnWatchMovie(m -> JOptionPane.showMessageDialog(
                 FormManager.getFrame(),
-                "Bắt đầu xem phim: " + m.getTitle(),
+                "Bắt đầu xem phim: " + m.getVideoUrl(),
                 "Xem phim",
                 JOptionPane.INFORMATION_MESSAGE));
         detailForm.setOnToggleFavorite(m -> JOptionPane.showMessageDialog(

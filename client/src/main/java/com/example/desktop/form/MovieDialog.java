@@ -124,7 +124,7 @@ public class MovieDialog extends JPanel {
 
             // 4. Tạo đối tượng NewMovie
             AuthApiClient.NewMovie movieData = new AuthApiClient.NewMovie(
-                    title, description, year, duration, videoUrl, posterUrl, genresList
+                    title, description, year, duration, videoUrl, null, posterUrl, genresList
             );
 
             // 5. Gọi API trong SwingWorker
