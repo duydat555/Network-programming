@@ -1,7 +1,8 @@
 package com.example.hls_server.api;
 
+import com.example.hls_server.service.ClientMonitor;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.core.io.Resource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.*;
@@ -21,6 +22,9 @@ public class HlsController {
     private final CopyOnWriteArraySet<String> printedClients = new CopyOnWriteArraySet<>();
     private int lastClientCount = 0;
 
+    @Autowired
+    private ClientMonitor clientMonitor;
+
     @GetMapping("/{folder}/{file}")
     public ResponseEntity<?> get(@PathVariable String folder, @PathVariable String file,
                                  @RequestHeader(value = "Range", required = false) String range,
@@ -29,6 +33,9 @@ public class HlsController {
         String clientIp = getClientIp(request);
         activeClients.put(clientIp, System.currentTimeMillis());
         cleanupInactiveClients();
+
+        // Track with ClientMonitor
+        clientMonitor.trackClient(clientIp, file);
 
         int currentCount = activeClients.size();
         if (currentCount != lastClientCount || !printedClients.contains(clientIp)) {
