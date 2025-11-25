@@ -158,9 +158,9 @@ public class MovieDetailPanel extends JPanel {
         metaPanel.repaint();
 
         ratingBadge.setVisible(true);
-        double score = computeRating(movie);
+        double score = movie.getRating();
         String htmlRating = String.format(
-                "<html><span style='color:#DDDDDD;'>Đánh giá</span>&nbsp;&nbsp;<span style='color:#FFC107; font-size:110%%;'>★ %.1f/5</span></html>",
+                "<html><span style='color:#DDDDDD;'>Đánh giá</span>&nbsp;&nbsp;<span style='color:#FFC107; font-size:110%%;'>★ %.1f/10</span></html>",
                 score
         );
         ratingBadge.setText(htmlRating);
@@ -170,7 +170,7 @@ public class MovieDetailPanel extends JPanel {
         favoriteButton.setText(favorite ? "Đã yêu thích" : "Yêu thích");
         favoriteButton.putClientProperty(FlatClientProperties.STYLE,
                 favorite ?
-                        "arc:999;margin:6,12,6,12;borderWidth:0;background:#E91E63;foreground:white;" :
+                        "arc:999;margin:6,12,6,12;borderWidth:0;background:#E91E63" :
                         "arc:999;margin:6,12,6,12;borderWidth:1;[light]foreground:$Component.accentColor;[dark]foreground:tint($Component.accentColor,80%);"
         );
     }
@@ -186,12 +186,6 @@ public class MovieDetailPanel extends JPanel {
         return label;
     }
 
-    private double computeRating(Movie movie) {
-        double base = 3.6;
-        double durationFactor = movie.getDurationMin() == null ? 0.2 : Math.min(1.0, movie.getDurationMin() / 140.0);
-        double genreFactor = movie.getGenres() == null ? 0 : Math.min(0.6, movie.getGenres().size() * 0.12);
-        return Math.max(3.0, Math.min(5.0, base + durationFactor + genreFactor));
-    }
 
     public void onWatchTrailer(ActionListener action) {
         resetAction(trailerButton, action);

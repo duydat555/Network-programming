@@ -10,6 +10,7 @@ public class Movie {
     private String description;
     private Integer year;
     private Integer durationMin;
+    private double rating;
     private String videoUrl;
     private String posterUrl;
     private String backdropUrl;
@@ -20,13 +21,14 @@ public class Movie {
     public Movie() {
     }
 
-    public Movie(Long id, String title, String description, Integer year, Integer durationMin,
+    public Movie(Long id, String title, String description, Integer year, Integer durationMin, double rating,
                  String videoUrl, String backdropUrl, String posterUrl, List<String> genres) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.year = year;
         this.durationMin = durationMin;
+        this.rating = rating;
         this.videoUrl = videoUrl;
         this.posterUrl = posterUrl;
         this.backdropUrl = backdropUrl;
@@ -89,6 +91,10 @@ public class Movie {
     public void setDurationMin(Integer durationMin) {
         this.durationMin = durationMin;
     }
+
+    public double getRating() {return rating;}
+
+    public void setRating(double rating) {this.rating = rating;}
 
     public String getVideoUrl() {
         return videoUrl;

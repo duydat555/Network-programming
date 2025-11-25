@@ -30,6 +30,9 @@ public class Movie {
     @Column(name = "duration_min")
     private Integer durationMin;
 
+    @Column(name = "rating")
+    private double rating;
+
     @Lob
     @Column(name = "video_url", nullable = false)
     private String videoUrl;
@@ -45,7 +48,6 @@ public class Movie {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    // Many-to-many với Genre qua bảng movie_genres
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "movie_genres",
@@ -54,11 +56,9 @@ public class Movie {
     )
     private Set<Genre> genres = new HashSet<>();
 
-    // Quan hệ với WatchHistory
     @OneToMany(mappedBy = "movie")
     private List<WatchHistory> watchHistoryList;
 
-    // Quan hệ với Favorite
     @OneToMany(mappedBy = "movie")
     private List<Favorite> favorites;
 }

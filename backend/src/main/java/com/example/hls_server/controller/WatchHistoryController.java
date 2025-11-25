@@ -1,5 +1,7 @@
 package com.example.hls_server.controller;
 
+import com.example.hls_server.dto.BaseResponse;
+import com.example.hls_server.dto.CreateWatchHistoryRequest;
 import com.example.hls_server.dto.UpdateWatchHistoryRequest;
 import com.example.hls_server.dto.WatchHistoryDto;
 import com.example.hls_server.service.WatchHistoryService;
@@ -15,14 +17,20 @@ public class WatchHistoryController {
 
     private final WatchHistoryService watchHistoryService;
 
+    @PostMapping
+    public BaseResponse<WatchHistoryDto> createWatchHistory(@PathVariable Long userId,
+                                                             @RequestBody CreateWatchHistoryRequest request) {
+        return watchHistoryService.createWatchHistory(userId, request);
+    }
+
     @PutMapping
-    public void updatePosition(@PathVariable Long userId,
+    public BaseResponse<Void> updatePosition(@PathVariable Long userId,
                                @RequestBody UpdateWatchHistoryRequest request) {
-        watchHistoryService.updateWatchPosition(userId, request);
+        return watchHistoryService.updateWatchPosition(userId, request);
     }
 
     @GetMapping
-    public List<WatchHistoryDto> getHistory(@PathVariable Long userId) {
+    public BaseResponse<List<WatchHistoryDto>> getHistory(@PathVariable Long userId) {
         return watchHistoryService.getWatchHistory(userId);
     }
 }

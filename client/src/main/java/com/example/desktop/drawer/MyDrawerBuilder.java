@@ -2,6 +2,7 @@ package com.example.desktop.drawer;
 
 import com.example.desktop.api.AuthApiClient;
 import com.example.desktop.form.Dashboard;
+import com.example.desktop.form.FavoritesForm;
 import com.example.desktop.system.Form;
 import com.example.desktop.system.UserSession;
 import com.formdev.flatlaf.FlatClientProperties;
@@ -113,12 +114,16 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         MenuItem items[] = new MenuItem[]{
                 new Item("Trang chủ", "house.svg", Dashboard.class),
                 new Item("Thể loại", "list.svg")
-                        .subMenu("Phim lẻ")
-                        .subMenu("Phim bộ"),
+                        .subMenu("Hành động")
+                        .subMenu("Hoạt hình")
+                        .subMenu("Kinh dị")
+                        .subMenu("Lịch sử")
+                        .subMenu("Tình cảm")
+                        .subMenu("Viễn tưởng"),
                 new Item("Quốc gia", "map-pinned.svg")
                         .subMenu("Việt Nam")
                         .subMenu("Hàn Quốc"),
-                new Item("Danh sách yêu thích", "heart.svg"),
+                new Item("Danh sách yêu thích", "heart.svg", FavoritesForm.class),
                 new Item("Xem tiếp", "history.svg"),
                 new Item("Đăng xuất", "log-out.svg")
         };

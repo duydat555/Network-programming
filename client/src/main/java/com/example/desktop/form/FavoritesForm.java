@@ -1,7 +1,6 @@
 package com.example.desktop.form;
 
 import com.example.desktop.api.FavoriteApi;
-import com.example.desktop.api.MovieApi;
 import com.example.desktop.component.CardMovie;
 import com.example.desktop.layout.WrapLayout;
 import com.example.desktop.model.Movie;
@@ -13,7 +12,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.List;
 
-public class Dashboard extends Form {
+public class FavoritesForm extends Form {
 
     private JPanel contentPanel;
     private JScrollPane scroll;
@@ -21,11 +20,15 @@ public class Dashboard extends Form {
     // TODO: Replace with actual logged-in user ID from authentication system
     private static final Long CURRENT_USER_ID = 1L;
 
-    public Dashboard() {
+    public FavoritesForm() {
         setLayout(new BorderLayout());
         setBackground(new Color(242, 242, 242));
 
-        // Tạo panel chứa movies với layout hỗ trợ cuộn dọc
+        // Header panel with title
+        JPanel headerPanel = createHeaderPanel();
+        add(headerPanel, BorderLayout.NORTH);
+
+        // Create panel to hold favorite movies with wrap layout
         contentPanel = new JPanel();
         contentPanel.setLayout(new WrapLayout(FlowLayout.LEFT, 20, 20));
         contentPanel.setBackground(new Color(242, 242, 242));
@@ -38,52 +41,64 @@ public class Dashboard extends Form {
 
         add(scroll, BorderLayout.CENTER);
 
-        // Load movies from API
-        loadMovies();
+        // Load favorites from API
+        loadFavorites();
     }
 
-    private void loadMovies() {
+    private JPanel createHeaderPanel() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(new Color(242, 242, 242));
+        header.setBorder(BorderFactory.createEmptyBorder(20, 30, 10, 30));
+
+        JLabel titleLabel = new JLabel("Phim yêu thích của tôi");
+        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 24f));
+
+        header.add(titleLabel, BorderLayout.WEST);
+
+        return header;
+    }
+
+    private void loadFavorites() {
         // Show loading indicator
         contentPanel.removeAll();
-        JLabel loadingLabel = new JLabel("Đang tải phim...");
+        JLabel loadingLabel = new JLabel("Đang tải danh sách yêu thích...");
         loadingLabel.setFont(loadingLabel.getFont().deriveFont(Font.BOLD, 16f));
         contentPanel.add(loadingLabel);
         contentPanel.revalidate();
         contentPanel.repaint();
 
-        // Fetch movies in a background thread to avoid blocking UI
+        // Fetch favorites asynchronously
         SwingWorker<List<Movie>, Void> worker = new SwingWorker<>() {
             @Override
             protected List<Movie> doInBackground() throws Exception {
-                return MovieApi.getMovies();
+                return FavoriteApi.getFavorites(CURRENT_USER_ID);
             }
 
             @Override
             protected void done() {
                 try {
-                    List<Movie> movies = get();
-                    displayMovies(movies);
+                    List<Movie> favorites = get();
+                    displayFavorites(favorites);
                 } catch (Exception e) {
                     e.printStackTrace();
-                    showError("Lỗi khi tải danh sách phim: " + e.getMessage());
+                    showError("Không thể tải danh sách yêu thích: " + e.getMessage());
                 }
             }
         };
         worker.execute();
     }
 
-    private void displayMovies(List<Movie> movies) {
+    private void displayFavorites(List<Movie> favorites) {
         contentPanel.removeAll();
 
-        if (movies == null || movies.isEmpty()) {
-            JLabel emptyLabel = new JLabel("Không có phim nào để hiển thị");
+        if (favorites.isEmpty()) {
+            JLabel emptyLabel = new JLabel("Bạn chưa có phim yêu thích nào");
             emptyLabel.setFont(emptyLabel.getFont().deriveFont(Font.BOLD, 16f));
+            emptyLabel.setForeground(Color.GRAY);
             contentPanel.add(emptyLabel);
         } else {
-            for (Movie movie : movies) {
-                CardMovie card = new CardMovie(movie, m -> {
-                    showMovieDetails(m);
-                });
+            for (Movie movie : favorites) {
+                CardMovie card = new CardMovie(movie, this::showMovieDetails);
                 contentPanel.add(card);
             }
         }
@@ -92,46 +107,79 @@ public class Dashboard extends Form {
         contentPanel.repaint();
     }
 
-    private void showMovieDetails(Movie movie) {
+    private void showMovieDetails(Movie favoriteMovie) {
+        // Since favorite API only returns basic info (id, title, posterUrl),
+        // we need to fetch full movie details from MovieApi
+        SwingWorker<Movie, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Movie doInBackground() throws Exception {
+                // Fetch full movie details using movie ID
+                return fetchFullMovieDetails(favoriteMovie.getId());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Movie fullMovie = get();
+                    if (fullMovie != null) {
+                        showMovieDetailForm(fullMovie);
+                    } else {
+                        // If full details not available, show with limited info
+                        showMovieDetailForm(favoriteMovie);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // Fallback to showing limited info
+                    showMovieDetailForm(favoriteMovie);
+                }
+            }
+        };
+        worker.execute();
+    }
+
+    private Movie fetchFullMovieDetails(Long movieId) {
+        // This method should call MovieApi to get full movie details
+        // For now, we'll return null and you can implement it later
+        // TODO: Implement MovieApi.getMovieById(movieId)
+        return null;
+    }
+
+    private void showMovieDetailForm(Movie movie) {
         MovieDetailForm detailForm = (MovieDetailForm) AllForms.getForm(MovieDetailForm.class);
         detailForm.bindMovie(movie);
-        detailForm.setBackgroundUrl(movie.getBackdropUrl());
+        detailForm.setBackgroundUrl(movie.getPosterUrl());
+
         detailForm.setOnWatchTrailer(m -> JOptionPane.showMessageDialog(
                 FormManager.getFrame(),
                 "Đang mở trailer cho: " + m.getTitle(),
                 "Trailer",
                 JOptionPane.INFORMATION_MESSAGE));
+
         detailForm.setOnWatchMovie(m -> JOptionPane.showMessageDialog(
                 FormManager.getFrame(),
                 "Bắt đầu xem phim: " + m.getVideoUrl(),
                 "Xem phim",
                 JOptionPane.INFORMATION_MESSAGE));
 
-        // Toggle favorite functionality with API integration
+        // Toggle favorite functionality with refresh on change
         detailForm.setOnToggleFavorite(m -> {
             toggleFavorite(m, detailForm);
         });
 
-        // Check and update favorite state asynchronously
+        // Check and update favorite state
         checkFavoriteState(movie, detailForm);
 
         FormManager.showForm(detailForm);
     }
 
-    /**
-     * Toggle favorite status for a movie
-     */
     private void toggleFavorite(Movie movie, MovieDetailForm detailForm) {
-        // Perform API call in background thread
         SwingWorker<FavoriteApi.ApiResponse, Void> worker = new SwingWorker<>() {
             private boolean currentState;
 
             @Override
             protected FavoriteApi.ApiResponse doInBackground() throws Exception {
-                // First check current state
                 currentState = FavoriteApi.isFavorite(CURRENT_USER_ID, movie.getId());
 
-                // Toggle the state
                 if (currentState) {
                     return FavoriteApi.removeFavorite(CURRENT_USER_ID, movie.getId());
                 } else {
@@ -145,10 +193,8 @@ public class Dashboard extends Form {
                     FavoriteApi.ApiResponse response = get();
 
                     if (response.isSuccess()) {
-                        // Update UI state
                         detailForm.updateFavoriteState(!currentState);
 
-                        // Show success message
                         String message = currentState ?
                             "Đã xóa khỏi danh sách yêu thích: " + movie.getTitle() :
                             "Đã thêm vào danh sách yêu thích: " + movie.getTitle();
@@ -158,8 +204,12 @@ public class Dashboard extends Form {
                             message,
                             "Yêu thích",
                             JOptionPane.INFORMATION_MESSAGE);
+
+                        // Refresh the favorites list after removing
+                        if (currentState) {
+                            refresh();
+                        }
                     } else {
-                        // Show error message from API
                         JOptionPane.showMessageDialog(
                             FormManager.getFrame(),
                             "Lỗi: " + response.getMessage(),
@@ -179,9 +229,6 @@ public class Dashboard extends Form {
         worker.execute();
     }
 
-    /**
-     * Check if movie is in favorites and update UI
-     */
     private void checkFavoriteState(Movie movie, MovieDetailForm detailForm) {
         SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
             @Override
@@ -195,7 +242,6 @@ public class Dashboard extends Form {
                     boolean isFavorite = get();
                     detailForm.updateFavoriteState(isFavorite);
                 } catch (Exception e) {
-                    // If check fails, default to false
                     detailForm.updateFavoriteState(false);
                     System.err.println("Lỗi khi kiểm tra trạng thái favorite: " + e.getMessage());
                 }
@@ -206,23 +252,21 @@ public class Dashboard extends Form {
 
     private void showError(String message) {
         contentPanel.removeAll();
-        JLabel errorLabel = new JLabel("<html><div style='text-align: center;'>" +
-                                       message +
-                                       "<br><br>Vui lòng thử lại sau</div></html>");
-        errorLabel.setFont(errorLabel.getFont().deriveFont(Font.BOLD, 14f));
+        JLabel errorLabel = new JLabel(message);
+        errorLabel.setFont(errorLabel.getFont().deriveFont(Font.BOLD, 16f));
         errorLabel.setForeground(Color.RED);
         contentPanel.add(errorLabel);
         contentPanel.revalidate();
         contentPanel.repaint();
     }
 
-    // Method to refresh the movie list
     public void refresh() {
-        loadMovies();
+        loadFavorites();
     }
 
     @Override
     public void formRefresh() {
-        loadMovies();
+        loadFavorites();
     }
 }
+

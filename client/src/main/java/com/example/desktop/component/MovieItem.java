@@ -73,6 +73,7 @@ public class MovieItem extends JButton {
                     movie.description(),
                     movie.year(),
                     movie.durationMin(),
+                    movie.rating(),
                     null,
                     null,
                     movie.posterUrl(),

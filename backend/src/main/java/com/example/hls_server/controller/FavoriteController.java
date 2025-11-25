@@ -1,5 +1,6 @@
 package com.example.hls_server.controller;
 
+import com.example.hls_server.dto.BaseResponse;
 import com.example.hls_server.dto.FavoriteDto;
 import com.example.hls_server.service.FavoriteService;
 import lombok.RequiredArgsConstructor;
@@ -15,19 +16,19 @@ public class FavoriteController {
     private final FavoriteService favoriteService;
 
     @PostMapping("/{movieId}")
-    public void addFavorite(@PathVariable Long userId,
-                            @PathVariable Long movieId) {
-        favoriteService.addFavorite(userId, movieId);
+    public BaseResponse<String> addFavorite(@PathVariable Long userId,
+                                            @PathVariable Long movieId) {
+        return favoriteService.addFavorite(userId, movieId);
     }
 
     @DeleteMapping("/{movieId}")
-    public void removeFavorite(@PathVariable Long userId,
-                               @PathVariable Long movieId) {
-        favoriteService.removeFavorite(userId, movieId);
+    public BaseResponse<String> removeFavorite(@PathVariable Long userId,
+                                               @PathVariable Long movieId) {
+        return favoriteService.removeFavorite(userId, movieId);
     }
 
     @GetMapping
-    public List<FavoriteDto> getFavorites(@PathVariable Long userId) {
+    public BaseResponse<List<FavoriteDto>> getFavorites(@PathVariable Long userId) {
         return favoriteService.getFavorites(userId);
     }
 }

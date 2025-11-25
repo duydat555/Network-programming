@@ -105,4 +105,9 @@ public class UserManagement extends Form {
 
         worker.execute();
     }
+
+    @Override
+    public void formRefresh() {
+        loadUsers();
+    }
 }

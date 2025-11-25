@@ -19,7 +19,7 @@ import java.util.Collections;
 
 public class AuthApiClient {
 
-    private static final String BASE_URL = "http://192.168.231.91:8080";
+    private static final String BASE_URL = "http://192.168.12.197:8080";
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final HttpClient client = HttpClient.newHttpClient();
 
@@ -267,6 +267,7 @@ public class AuthApiClient {
             String description,
             int year,
             int durationMin,
+            double rating,
             String videoUrl,
             String backdropUrl,
             String posterUrl,

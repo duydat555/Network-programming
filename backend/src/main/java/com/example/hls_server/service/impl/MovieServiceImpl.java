@@ -39,6 +39,7 @@ public class MovieServiceImpl implements MovieService {
         movie.setDescription(request.getDescription());
         movie.setYear(request.getYear());
         movie.setDurationMin(request.getDurationMin());
+        movie.setRating(request.getRating());
         movie.setVideoUrl(request.getVideoUrl());
         movie.setPosterUrl(request.getPosterUrl());
         movie.setBackdropUrl(request.getBackdropUrl());
@@ -130,6 +131,7 @@ public class MovieServiceImpl implements MovieService {
                 .description(movie.getDescription())
                 .year(movie.getYear())
                 .durationMin(movie.getDurationMin())
+                .rating(movie.getRating())
                 .videoUrl(movie.getVideoUrl())
                 .posterUrl(movie.getPosterUrl())
                 .backdropUrl(movie.getBackdropUrl())

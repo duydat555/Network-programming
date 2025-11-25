@@ -216,4 +216,9 @@ public class MovieManagement extends Form {
         };
         worker.execute();
     }
+
+    @Override
+    public void formRefresh() {
+        loadMovies();
+    }
 }

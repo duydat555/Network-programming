@@ -24,7 +24,7 @@ import java.util.Map;
 
 public class MovieApi {
 
-    private static final String BASE_URL = "http://192.168.231.91:8080";
+    private static final String BASE_URL = "http://192.168.12.197:8080";
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final HttpClient client = HttpClient.newHttpClient();
 
@@ -79,6 +79,7 @@ public class MovieApi {
             movie.setDescription(movieNode.path("description").asText());
             movie.setYear(movieNode.path("year").asInt());
             movie.setDurationMin(movieNode.path("durationMin").asInt());
+            movie.setRating(movieNode.path("rating").asDouble());
             movie.setVideoUrl(movieNode.path("videoUrl").asText());
             movie.setPosterUrl(movieNode.path("posterUrl").asText());
             movie.setBackdropUrl(movieNode.path("backdropUrl").asText());

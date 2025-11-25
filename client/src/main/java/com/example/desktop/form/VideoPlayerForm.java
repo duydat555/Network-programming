@@ -2,6 +2,7 @@ package com.example.desktop.form;
 
 import com.example.desktop.system.Form;
 import javafx.application.Platform;
+import javafx.concurrent.Worker;
 import javafx.embed.swing.JFXPanel;
 import javafx.scene.Scene;
 import javafx.scene.paint.Color;
@@ -11,6 +12,8 @@ import javafx.scene.web.WebView;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class VideoPlayerForm extends Form {
 
@@ -21,12 +24,16 @@ public class VideoPlayerForm extends Form {
     private WebView webView;
     private WebEngine engine;
 
-    // --- BIẾN XỬ LÝ FULLSCREEN ---
+    // --- BIẾN XỬ LÍ FULLSCREEN ---
     private boolean isFullscreen = false;
     private JWindow fullScreenWindow;
-    private JFXPanel fullScreenJFXPanel; // JFXPanel riêng cho fullscreen
+    private JFXPanel fullScreenJFXPanel;
     private WebView fullScreenWebView;
     private WebEngine fullScreenEngine;
+
+    // --- BIẾN LƯU TRẠNG THÁI VIDEO (FIX) ---
+    private double savedCurrentTime = 0;
+    private boolean savedWasPlaying = false;
 
     public VideoPlayerForm(String movieTitle, String videoUrl) {
         this.movieTitle = movieTitle;
@@ -38,37 +45,126 @@ public class VideoPlayerForm extends Form {
         setLayout(new BorderLayout());
         setBackground(java.awt.Color.BLACK);
         add(jfxPanel, BorderLayout.CENTER);
-
-        // Khởi chạy JavaFX
         Platform.runLater(this::initFX);
     }
 
     private void initFX() {
         webView = new WebView();
         webView.setContextMenuEnabled(false);
-
         Scene scene = new Scene(webView, Color.BLACK);
         jfxPanel.setScene(scene);
-
         engine = webView.getEngine();
+        setupEngine(engine, false);
+        loadCustomPlayer(engine);
+    }
 
-        // Set up prompt handler to communicate with JavaScript
-        engine.setPromptHandler((PromptData param) -> {
+    // =================================================================
+    // LIFECYCLE MANAGEMENT (THE FIX)
+    // =================================================================
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        // FIX: When the form is added back to the screen, check if engine exists.
+        // If it does (meaning this is a reused instance), we must reload the content
+        // because removeNotify() previously cleared it.
+        if (engine != null) {
+            Platform.runLater(() -> {
+                loadCustomPlayer(engine);
+
+                // Đợi video load xong rồi mới restore trạng thái
+                engine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
+                    if (newState == Worker.State.SUCCEEDED) {
+                        restoreVideoState();
+                    }
+                });
+            });
+        }
+    }
+
+    @Override
+    public void removeNotify() {
+        if (isFullscreen) exitFullscreen();
+
+        // Lưu trạng thái video trước khi clear
+        Platform.runLater(() -> {
+            if (engine != null) {
+                saveVideoState();
+                engine.load(null); // Stops playback and clears memory
+            }
+        });
+        super.removeNotify();
+    }
+
+    // =================================================================
+    // VIDEO STATE MANAGEMENT (NEW)
+    // =================================================================
+
+    private void saveVideoState() {
+        try {
+            Object timeObj = engine.executeScript("video.currentTime");
+            Object pausedObj = engine.executeScript("video.paused");
+
+            if (timeObj instanceof Number) {
+                savedCurrentTime = ((Number) timeObj).doubleValue();
+            }
+            if (pausedObj instanceof Boolean) {
+                savedWasPlaying = !(Boolean) pausedObj; // Lưu ngược lại: đang phát = !paused
+            }
+
+            System.out.println("Saved video state: time=" + savedCurrentTime + ", wasPlaying=" + savedWasPlaying);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void restoreVideoState() {
+        // Đợi một chút để đảm bảo video đã load metadata
+        new Thread(() -> {
+            try {
+                Thread.sleep(500); // Đợi video element sẵn sàng
+                Platform.runLater(() -> {
+                    try {
+                        // Seek về vị trí cũ
+                        if (savedCurrentTime > 0) {
+                            engine.executeScript("video.currentTime = " + savedCurrentTime);
+                        }
+
+                        // Nếu trước đó đang phát thì phát tiếp
+                        if (savedWasPlaying) {
+                            // Dùng event 'seeked' để chắc chắn seek xong mới play
+                            engine.executeScript(
+                                    "video.addEventListener('seeked', function() { " +
+                                            "   video.play(); " +
+                                            "}, {once: true});"
+                            );
+                        }
+
+                        System.out.println("Restored video state: time=" + savedCurrentTime + ", play=" + savedWasPlaying);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            } catch (InterruptedException ignored) {}
+        }).start();
+    }
+
+    // =================================================================
+    // ENGINE SETUP
+    // =================================================================
+
+    private void setupEngine(WebEngine eng, boolean isFullScreenEngine) {
+        eng.setPromptHandler((PromptData param) -> {
             String command = param.getMessage();
             if ("toggleFullscreen".equals(command)) {
                 SwingUtilities.invokeLater(() -> {
-                    if (isFullscreen) {
-                        exitFullscreen();
-                    } else {
-                        enterFullscreen();
-                    }
+                    if (isFullscreen) exitFullscreen();
+                    else enterFullscreen();
                 });
                 return "OK";
             }
             return null;
         });
-
-        loadCustomPlayer(engine);
     }
 
     // =================================================================
@@ -76,239 +172,146 @@ public class VideoPlayerForm extends Form {
     // =================================================================
 
     private void enterFullscreen() {
-        System.out.println("Bắt đầu vào Fullscreen...");
-
-        // 1. Tìm cửa sổ gốc (MainFrame) để làm owner
         Window windowAncestor = SwingUtilities.getWindowAncestor(this);
         Frame parentFrame = (windowAncestor instanceof Frame) ? (Frame) windowAncestor : null;
 
-        // 2. Đánh dấu trạng thái fullscreen
         isFullscreen = true;
 
-        // 3. Lấy thời gian hiện tại của video gốc
-        final double[] currentTime = {0};
-        final boolean[] isPaused = {true};
-
+        // Lấy trạng thái từ video gốc
         Platform.runLater(() -> {
-            String script = "video.currentTime";
-            Object time = engine.executeScript(script);
-            if (time != null) {
-                currentTime[0] = ((Number) time).doubleValue();
-            }
+            double currentTime = 0;
+            boolean isPaused = true;
+            try {
+                Object timeObj = engine.executeScript("video.currentTime");
+                Object pausedObj = engine.executeScript("video.paused");
+                if (timeObj instanceof Number) currentTime = ((Number) timeObj).doubleValue();
+                if (pausedObj instanceof Boolean) isPaused = (Boolean) pausedObj;
 
-            Object pausedState = engine.executeScript("video.paused");
-            if (pausedState != null) {
-                isPaused[0] = (Boolean) pausedState;
-            }
+                engine.executeScript("video.pause()"); // Dừng video cũ
+            } catch (Exception e) { e.printStackTrace(); }
 
-            // TẠM DỪNG video gốc để giảm lag
-            engine.executeScript("video.pause()");
+            final double startAt = currentTime;
+            final boolean shouldPlay = !isPaused;
 
-            System.out.println("Current video time: " + currentTime[0] + ", paused: " + isPaused[0]);
-
-            // 4. Tạo JFXPanel mới cho fullscreen
             SwingUtilities.invokeLater(() -> {
                 fullScreenJFXPanel = new JFXPanel();
-
-                // 5. Tạo JWindow Fullscreen
                 fullScreenWindow = new JWindow(parentFrame);
                 fullScreenWindow.setBackground(java.awt.Color.BLACK);
                 fullScreenWindow.setLayout(new BorderLayout());
                 fullScreenWindow.add(fullScreenJFXPanel, BorderLayout.CENTER);
 
-                // Set fullscreen size
+                // Fullscreen setup
                 fullScreenWindow.setAlwaysOnTop(true);
                 Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
                 fullScreenWindow.setSize(screenSize);
                 fullScreenWindow.setLocation(0, 0);
 
-                // 6. Khởi tạo JavaFX cho fullscreen panel
+                // Cleanup khi đóng (đề phòng Alt+F4 hoặc đóng cưỡng bức)
+                fullScreenWindow.addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosed(WindowEvent e) {
+                        if(isFullscreen) exitFullscreen();
+                    }
+                });
+
                 Platform.runLater(() -> {
                     fullScreenWebView = new WebView();
                     fullScreenWebView.setContextMenuEnabled(false);
-
-                    Scene scene = new Scene(fullScreenWebView, Color.BLACK);
-                    fullScreenJFXPanel.setScene(scene);
-
+                    fullScreenJFXPanel.setScene(new Scene(fullScreenWebView, Color.BLACK));
                     fullScreenEngine = fullScreenWebView.getEngine();
 
-                    // Set up prompt handler cho fullscreen
-                    fullScreenEngine.setPromptHandler((PromptData param) -> {
-                        String command = param.getMessage();
-                        if ("toggleFullscreen".equals(command)) {
-                            SwingUtilities.invokeLater(this::exitFullscreen);
-                            return "OK";
-                        }
-                        return null;
-                    });
-
-                    // Load player HTML
+                    setupEngine(fullScreenEngine, true);
                     loadCustomPlayer(fullScreenEngine);
 
-                    // Đợi video load xong rồi seek đến vị trí cũ
-                    final double timeToSeek = currentTime[0];
-                    final boolean shouldPlay = !isPaused[0];
-
-                    fullScreenEngine.getLoadWorker().stateProperty().addListener((_obs, _oldState, newState) -> {
-                        if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
-                            Platform.runLater(() -> {
+                    // Logic Sync thời gian
+                    fullScreenEngine.getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
+                        if (newState == Worker.State.SUCCEEDED) {
+                            // Chờ một chút để DOM ready hoàn toàn
+                            new Thread(() -> {
                                 try {
-                                    // Kiểm tra null trước khi thao tác
-                                    if (fullScreenEngine == null) {
-                                        System.out.println("Fullscreen engine is null, user may have exited fullscreen");
-                                        return;
-                                    }
-
-                                    // Đợi video element ready
-                                    Thread.sleep(800);
-
-                                    // Kiểm tra lại sau khi sleep
-                                    if (fullScreenEngine == null) {
-                                        return;
-                                    }
-
-                                    // Seek đến vị trí cũ
-                                    if (timeToSeek > 0) {
-                                        fullScreenEngine.executeScript("video.currentTime = " + timeToSeek);
-
-                                        // Đợi video buffer tại vị trí mới
-                                        if (fullScreenEngine != null) {
-                                            fullScreenEngine.executeScript("""
-                                                video.addEventListener('canplay', function onCanPlay() {
-                                                    video.removeEventListener('canplay', onCanPlay);
-                                                    console.log('Video ready to play at: ' + video.currentTime);
-                                                }, { once: true });
-                                            """);
+                                    Thread.sleep(500); // Đợi load tài nguyên
+                                    Platform.runLater(() -> {
+                                        if (fullScreenEngine == null) return;
+                                        // 1. Seek
+                                        fullScreenEngine.executeScript("video.currentTime = " + startAt);
+                                        // 2. Nếu đang phát thì phát tiếp
+                                        if (shouldPlay) {
+                                            // Sử dụng event 'seeked' để play chắc chắn hơn
+                                            fullScreenEngine.executeScript(
+                                                    "video.addEventListener('seeked', function() { video.play(); }, {once:true});"
+                                            );
                                         }
-                                    }
-
-                                    // Tiếp tục phát nếu đang phát
-                                    if (shouldPlay) {
-                                        // Đợi thêm một chút để video buffer
-                                        Thread.sleep(500);
-
-                                        // Kiểm tra null trước khi play
-                                        if (fullScreenEngine != null) {
-                                            fullScreenEngine.executeScript("video.play()");
-                                        }
-                                    }
-
-                                    System.out.println("Fullscreen video synced to time: " + timeToSeek);
-                                } catch (Exception e) {
-                                    System.err.println("Error syncing fullscreen video: " + e.getMessage());
-                                }
-                            });
+                                    });
+                                } catch (InterruptedException ignored) {}
+                            }).start();
                         }
                     });
                 });
 
-                // 7. Hiển thị window
-                SwingUtilities.invokeLater(() -> {
-                    fullScreenWindow.setVisible(true);
-                    fullScreenWindow.toFront();
-                    fullScreenJFXPanel.requestFocusInWindow();
-                });
-
-                System.out.println("Fullscreen window đã hiển thị");
+                fullScreenWindow.setVisible(true);
+                fullScreenWindow.toFront();
             });
         });
     }
 
     private void exitFullscreen() {
-        System.out.println("Thoát Fullscreen...");
-
         if (fullScreenWindow == null || fullScreenEngine == null) {
-            System.err.println("Fullscreen components already cleaned up");
             isFullscreen = false;
             return;
         }
 
-        // 1. Lấy thời gian hiện tại từ fullscreen video TRƯỚC KHI cleanup
         Platform.runLater(() -> {
+            double currentTime = 0;
+            boolean isPaused = true;
             try {
-                Object time = fullScreenEngine.executeScript("video.currentTime");
-                Object pausedState = fullScreenEngine.executeScript("video.paused");
+                Object timeObj = fullScreenEngine.executeScript("video.currentTime");
+                Object pausedObj = fullScreenEngine.executeScript("video.paused");
+                if (timeObj instanceof Number) currentTime = ((Number) timeObj).doubleValue();
+                if (pausedObj instanceof Boolean) isPaused = (Boolean) pausedObj;
+            } catch (Exception e) { e.printStackTrace(); }
 
-                final double currentTime = (time != null) ? ((Number) time).doubleValue() : 0;
-                final boolean isPaused = (pausedState != null) ? (Boolean) pausedState : true;
+            final double syncTime = currentTime;
+            final boolean shouldPlay = !isPaused;
 
-                System.out.println("Fullscreen video time before exit: " + currentTime + ", paused: " + isPaused);
+            // Cleanup UI Swing
+            SwingUtilities.invokeLater(() -> {
+                if (fullScreenWindow != null) {
+                    fullScreenWindow.dispose();
+                    fullScreenWindow = null;
+                }
+                isFullscreen = false;
+            });
 
-                // 2. Cleanup fullscreen window TRƯỚC (để ẩn window ngay)
-                SwingUtilities.invokeLater(() -> {
-                    if (fullScreenWindow != null) {
-                        fullScreenWindow.setVisible(false);
-                        fullScreenWindow.remove(fullScreenJFXPanel);
-                        fullScreenWindow.dispose();
-                        fullScreenWindow = null;
+            // Cleanup JavaFX & Sync về màn hình nhỏ
+            Platform.runLater(() -> {
+                if (fullScreenEngine != null) {
+                    fullScreenEngine.load(null); // Stop loading
+                    fullScreenEngine = null;
+                }
+                fullScreenWebView = null;
+                fullScreenJFXPanel = null;
+
+                // Sync lại engine gốc
+                if (engine != null) {
+                    // Reload content if it was cleared (safety check)
+                    if (engine.getLocation() == null || engine.getLocation().isEmpty()) {
+                        loadCustomPlayer(engine);
+                        // Note: If reloading, syncing time might need a listener,
+                        // but usually exitFullscreen happens while form is active.
                     }
 
-                    isFullscreen = false;
-                    System.out.println("Fullscreen window disposed");
-                });
-
-                // 3. Sync time về video gốc SAU KHI đã lấy giá trị
-                Platform.runLater(() -> {
-                    try {
-                        // Kiểm tra engine gốc còn tồn tại không
-                        if (engine == null) {
-                            System.err.println("Original engine is null, cannot sync time");
-                            return;
-                        }
-
-                        // Sync thời gian
-                        if (currentTime > 0) {
-                            engine.executeScript("video.currentTime = " + currentTime);
-                        }
-
-                        // Tiếp tục phát nếu đang phát
-                        if (!isPaused) {
-                            engine.executeScript("video.play()");
-                        }
-
-                        System.out.println("Synced time back to original video: " + currentTime);
-
-                        // 4. Cleanup fullscreen JavaFX components SAU CÙNG
-                        Platform.runLater(() -> {
-                            try {
-                                if (fullScreenEngine != null) {
-                                    fullScreenEngine.load(null);
-                                    fullScreenEngine = null;
-                                }
-                                if (fullScreenWebView != null) {
-                                    fullScreenWebView = null;
-                                }
-                                if (fullScreenJFXPanel != null) {
-                                    fullScreenJFXPanel.setScene(null);
-                                    fullScreenJFXPanel = null;
-                                }
-                                System.out.println("Fullscreen JavaFX resources cleaned up");
-                            } catch (Exception cleanupEx) {
-                                System.err.println("Error during cleanup: " + cleanupEx.getMessage());
-                            }
-                        });
-
-                    } catch (Exception e) {
-                        System.err.println("Error syncing video time: " + e.getMessage());
+                    engine.executeScript("video.currentTime = " + syncTime);
+                    if (shouldPlay) {
+                        engine.executeScript("video.play()");
                     }
-                });
-
-            } catch (Exception e) {
-                System.err.println("Error getting fullscreen video state: " + e.getMessage());
-                // Cleanup anyway
-                SwingUtilities.invokeLater(() -> {
-                    if (fullScreenWindow != null) {
-                        fullScreenWindow.setVisible(false);
-                        fullScreenWindow.dispose();
-                        fullScreenWindow = null;
-                    }
-                    isFullscreen = false;
-                });
-            }
+                }
+            });
         });
     }
 
-    // ... GIỮ NGUYÊN PHẦN HTML/CSS KHÔNG ĐỔI ...
+    // =================================================================
+    // HTML/CSS/JS PLAYER
+    // =================================================================
     private void loadCustomPlayer(WebEngine engine) {
         String htmlContent = """
             <html>
@@ -320,25 +323,40 @@ public class VideoPlayerForm extends Form {
                     body { margin: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', sans-serif; user-select: none; }
                     #player-container { position: relative; width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; background: #000; }
                     video { width: 100%; height: 100%; object-fit: contain; }
-                    .title-overlay { position: absolute; top: 25px; left: 30px; color: white; font-size: 24px; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8); opacity: 0.9; pointer-events: none; z-index: 10; }
-                    .hide-controls .title-overlay { opacity: 0; transition: opacity 0.5s; }
-                    .controls-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 40%, transparent 100%); padding: 20px 30px 25px 30px; display: flex; flex-direction: column; gap: 10px; transition: opacity 0.3s ease-in-out; opacity: 1; z-index: 20; }
+                    
+                    /* Overlay Title */
+                    .title-overlay { position: absolute; top: 25px; left: 30px; color: white; font-size: 24px; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8); opacity: 0.9; pointer-events: none; z-index: 10; transition: opacity 0.5s; }
+                    .hide-controls .title-overlay { opacity: 0; }
+                    
+                    /* Controls Bar */
+                    .controls-overlay { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 50%, transparent 100%); padding: 20px 30px 25px 30px; display: flex; flex-direction: column; gap: 10px; transition: opacity 0.3s ease-in-out; opacity: 1; z-index: 20; }
                     .hide-controls .controls-overlay { opacity: 0; pointer-events: none; }
+                    
                     .progress-row { display: flex; align-items: center; gap: 15px; width: 100%; margin-bottom: 5px; }
-                    .time-text { color: #e0e0e0; font-size: 13px; font-weight: 500; min-width: 50px; text-align: center; }
-                    input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; }
+                    .time-text { color: #e0e0e0; font-size: 13px; font-weight: 500; min-width: 60px; text-align: center; font-variant-numeric: tabular-nums; }
+                    
+                    /* === CUSTOM SLIDER STYLE (CSS + JS Gradient) === */
+                    input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer; height: 4px; border-radius: 2px; }
                     input[type=range]:focus { outline: none; }
-                    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.3); border-radius: 2px; transition: height 0.1s; }
-                    input[type=range]:hover::-webkit-slider-runnable-track { height: 6px; }
-                    input[type=range]::-webkit-slider-thumb { height: 14px; width: 14px; border-radius: 50%; background: #fff; cursor: pointer; -webkit-appearance: none; margin-top: -5px; box-shadow: 0 0 10px rgba(0,0,0,0.5); transform: scale(1); transition: transform 0.1s; }
+                    
+                    /* Track Logic: Background will be set via JS linear-gradient */
+                    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; border-radius: 2px; border: none; }
+                    
+                    /* Thumb Style */
+                    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: #fff; cursor: pointer; margin-top: -5px; box-shadow: 0 0 5px rgba(0,0,0,0.5); transform: scale(0); transition: transform 0.1s; }
+                    
+                    /* Hover Effects */
+                    .controls-overlay:hover input[type=range]::-webkit-slider-thumb { transform: scale(1); }
                     input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+                    
                     .buttons-row { display: flex; align-items: center; justify-content: space-between; }
-                    .left-controls, .right-controls { display: flex; align-items: center; gap: 25px; }
-                    .btn { background: none; border: none; color: white; cursor: pointer; font-size: 20px; opacity: 0.85; transition: all 0.2s; padding: 0; }
-                    .btn:hover { opacity: 1; transform: scale(1.2); text-shadow: 0 0 10px rgba(255,255,255,0.6); }
-                    .btn-play { font-size: 28px; width: 30px; text-align: center; }
-                    .volume-group { display: flex; align-items: center; gap: 10px; width: 120px; }
-                    #volume-slider { height: 3px; }
+                    .left-controls, .right-controls { display: flex; align-items: center; gap: 20px; }
+                    .btn { background: none; border: none; color: white; cursor: pointer; font-size: 18px; opacity: 0.85; transition: all 0.2s; padding: 5px; min-width: 30px; }
+                    .btn:hover { opacity: 1; transform: scale(1.1); text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+                    .btn-play { font-size: 24px; width: 35px; }
+                    
+                    .volume-group { display: flex; align-items: center; gap: 10px; width: 130px; }
+                    #volume-slider { height: 4px; }
                 </style>
             </head>
             <body>
@@ -347,22 +365,22 @@ public class VideoPlayerForm extends Form {
                     <video id="video" onclick="togglePlay()"></video>
                     <div class="controls-overlay" id="controls">
                         <div class="progress-row">
-                            <span id="current-time" class="time-text">00:00</span>
-                            <input type="range" id="seek-bar" value="0" min="0" step="0.1">
-                            <span id="duration" class="time-text">00:00</span>
+                            <span id="current-time" class="time-text">00:00:00</span>
+                            <input type="range" id="seek-bar" class="slider-progress" value="0" min="0" step="0.1">
+                            <span id="duration" class="time-text">00:00:00</span>
                         </div>
                         <div class="buttons-row">
                             <div class="left-controls">
                                 <button class="btn btn-play" onclick="togglePlay()"><i id="play-icon" class="fas fa-play"></i></button>
-                                <button class="btn" onclick="skip(-10)" title="Lùi 10s"><i class="fas fa-rotate-left"></i></button>
-                                <button class="btn" onclick="skip(10)" title="Tiến 10s"><i class="fas fa-rotate-right"></i></button>
+                                <button class="btn" onclick="skip(-10)"><i class="fas fa-rotate-left"></i></button>
+                                <button class="btn" onclick="skip(10)"><i class="fas fa-rotate-right"></i></button>
                                 <div class="volume-group">
                                     <button class="btn" onclick="toggleMute()"><i id="vol-icon" class="fas fa-volume-high"></i></button>
-                                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="1">
+                                    <input type="range" id="volume-slider" class="slider-vol" min="0" max="1" step="0.05" value="1">
                                 </div>
                             </div>
                             <div class="right-controls">
-                                <button class="btn" onclick="callJavaFullscreen()" title="Toàn màn hình"><i class="fas fa-expand"></i></button>
+                                <button class="btn" onclick="callJavaFullscreen()"><i class="fas fa-expand"></i></button>
                             </div>
                         </div>
                     </div>
@@ -375,50 +393,39 @@ public class VideoPlayerForm extends Form {
                     var seekBar = document.getElementById('seek-bar');
                     var volSlider = document.getElementById('volume-slider');
                     var container = document.getElementById('player-container');
+                    var currentTimeLabel = document.getElementById('current-time');
+                    var durationLabel = document.getElementById('duration');
                     var hideTimer;
 
-                    // Tối ưu HLS.js config để giảm lag
+                    // === HLS SETUP ===
                     if (Hls.isSupported()) {
                         var hls = new Hls({
                             maxBufferLength: 30,
-                            maxMaxBufferLength: 60,
                             maxBufferSize: 60 * 1000 * 1000,
-                            maxBufferHole: 0.5,
-                            lowLatencyMode: false,
-                            backBufferLength: 90
                         });
                         hls.loadSource(videoSrc);
                         hls.attachMedia(video);
-                        
-                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                            console.log('HLS manifest loaded');
-                        });
                     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                         video.src = videoSrc;
                     }
                     
-                    // Preload video để giảm lag khi seek
-                    video.preload = 'auto';
-
+                    // === CONTROLS LOGIC ===
                     function togglePlay() {
-                        if (video.paused) { video.play(); playIcon.className = 'fas fa-pause'; }
-                        else { video.pause(); playIcon.className = 'fas fa-play'; }
+                        if (video.paused) video.play();
+                        else video.pause();
                     }
 
-                    function callJavaFullscreen() {
-                        prompt('toggleFullscreen');
-                    }
-
-                    video.addEventListener('timeupdate', function() {
-                        if (!isNaN(video.duration)) {
-                            seekBar.value = video.currentTime;
-                            document.getElementById('current-time').innerText = formatTime(video.currentTime);
-                        }
+                    // QUAN TRỌNG: Lắng nghe sự kiện thực tế của Video để đổi icon
+                    // Giúp đồng bộ icon khi Java gọi lệnh play()
+                    video.addEventListener('play', function() {
+                        playIcon.className = 'fas fa-pause';
+                        container.classList.remove('hide-controls');
+                        scheduleHideControls();
                     });
-
-                    video.addEventListener('loadedmetadata', function() {
-                        seekBar.max = video.duration;
-                        document.getElementById('duration').innerText = formatTime(video.duration);
+                    
+                    video.addEventListener('pause', function() {
+                        playIcon.className = 'fas fa-play';
+                        container.classList.remove('hide-controls');
                     });
 
                     video.addEventListener('ended', function() {
@@ -426,29 +433,87 @@ public class VideoPlayerForm extends Form {
                         container.classList.remove('hide-controls');
                     });
 
-                    seekBar.addEventListener('input', function() { video.currentTime = this.value; });
-                    volSlider.addEventListener('input', function() { video.volume = this.value; });
+                    // === TIME & SEEKBAR UPDATE ===
+                    video.addEventListener('timeupdate', function() {
+                        if (!isNaN(video.duration)) {
+                            // Cập nhật giá trị input
+                            seekBar.value = video.currentTime;
+                            currentTimeLabel.innerText = formatTime(video.currentTime);
+                            // Cập nhật màu sắc thanh trượt
+                            updateSliderBackground(seekBar, video.currentTime, video.duration);
+                        }
+                    });
+
+                    video.addEventListener('loadedmetadata', function() {
+                        seekBar.max = video.duration;
+                        durationLabel.innerText = formatTime(video.duration);
+                        updateSliderBackground(seekBar, 0, video.duration);
+                        updateSliderBackground(volSlider, video.volume, 1);
+                    });
+
+                    // User kéo thanh seekbar
+                    seekBar.addEventListener('input', function() {
+                        var val = this.value;
+                        video.currentTime = val;
+                        updateSliderBackground(this, val, this.max);
+                    });
+                    
+                    // User kéo thanh volume
+                    volSlider.addEventListener('input', function() {
+                        video.volume = this.value;
+                        updateSliderBackground(this, this.value, this.max);
+                        updateVolumeIcon();
+                    });
 
                     function toggleMute() {
                         video.muted = !video.muted;
-                        document.getElementById('vol-icon').className = video.muted ? 'fas fa-volume-xmark' : 'fas fa-volume-high';
+                        updateVolumeIcon();
+                    }
+
+                    function updateVolumeIcon() {
+                        var icon = document.getElementById('vol-icon');
+                        if (video.muted || video.volume === 0) icon.className = 'fas fa-volume-xmark';
+                        else if (video.volume < 0.5) icon.className = 'fas fa-volume-low';
+                        else icon.className = 'fas fa-volume-high';
                     }
 
                     function skip(val) { video.currentTime += val; }
 
+                    function callJavaFullscreen() { prompt('toggleFullscreen'); }
+
+                    // === HÀM FORMAT TIME (HH:MM:SS) ===
                     function formatTime(seconds) {
-                        var m = Math.floor(seconds / 60);
-                        var s = Math.floor(seconds % 60);
-                        return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+                        if(isNaN(seconds)) return "00:00:00";
+                        var date = new Date(0);
+                        date.setSeconds(seconds);
+                        // Cắt chuỗi ISO 1970-01-01T[HH:MM:SS].000Z
+                        var timeString = date.toISOString().substr(11, 8);
+                        return timeString; 
                     }
 
-                    container.addEventListener('mousemove', function() {
-                        container.classList.remove('hide-controls');
+                    // === HÀM TÔ MÀU THANH TRƯỢT (Fix UI Slider) ===
+                    function updateSliderBackground(el, val, max) {
+                        // Tính phần trăm đã chạy
+                        var percentage = (val / max) * 100;
+                        // Cập nhật background gradient: Màu trắng bên trái, màu xám mờ bên phải
+                        el.style.background = `linear-gradient(to right, #fff ${percentage}%, rgba(255,255,255,0.3) ${percentage}%)`;
+                    }
+
+                    // === AUTO HIDE CONTROLS ===
+                    function scheduleHideControls() {
                         clearTimeout(hideTimer);
                         hideTimer = setTimeout(() => {
                             if(!video.paused) container.classList.add('hide-controls');
                         }, 3000);
+                    }
+
+                    container.addEventListener('mousemove', function() {
+                        container.classList.remove('hide-controls');
+                        scheduleHideControls();
                     });
+                    
+                    // Khởi tạo màu volume ban đầu
+                    updateSliderBackground(volSlider, 1, 1);
                 </script>
             </body>
             </html>
@@ -459,20 +524,5 @@ public class VideoPlayerForm extends Form {
                 .replace("__MOVIE_TITLE__", movieTitle);
 
         engine.loadContent(finalHtml);
-    }
-
-    @Override
-    public void removeNotify() {
-        // Quan trọng: Đảm bảo tắt Window nếu người dùng chuyển trang khi đang Fullscreen
-        if (isFullscreen) {
-            exitFullscreen();
-        }
-
-        Platform.runLater(() -> {
-            if (engine != null) engine.load(null);
-            if (webView != null) webView.getEngine().loadContent("");
-            jfxPanel.setScene(null);
-        });
-        super.removeNotify();
     }
 }
