@@ -130,14 +130,15 @@ public class MainForm extends JPanel {
                     return;
                 }
 
-                // THAY ĐỔI QUAN TRỌNG Ở ĐÂY:
-                // Thay vì mở new VideoPlayerDialog (cửa sổ rời),
-                // Ta chuyển hướng Form chính sang VideoPlayerForm (nhúng vào trong)
+                // BƯỚC 1: Lấy Instance VideoPlayerForm từ AllForms (hoặc cơ chế Singleton của bạn)
+                // Giả định bạn đang dùng AllForms để quản lý Form Singleton
+                VideoPlayerForm playerForm = (VideoPlayerForm) AllForms.getForm(VideoPlayerForm.class);
 
-                VideoPlayerForm playerForm = new VideoPlayerForm(movie.getTitle(), movie.getVideoUrl());
+                // BƯỚC 2: CẬP NHẬT thông tin phim cho Instance đã có
+                // Hàm setMovie này là phương thức đã được thêm vào trong VideoPlayerForm ở câu trả lời trước
+                playerForm.setMovie(movie.getTitle(), movie.getVideoUrl());
 
-                // Gọi hàm của FormManager để chuyển trang (nếu bạn dùng thư viện quản lý form)
-                // Hoặc gọi đệ quy chính hàm setForm này để đổi giao diện
+                // BƯỚC 3: HIỂN THỊ Form (FormManager sẽ gọi formOpen() để load video mới)
                 FormManager.showForm(playerForm);
             });
         }
