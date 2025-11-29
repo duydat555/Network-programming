@@ -273,4 +273,73 @@ public class MovieApi {
         };
         worker.execute();
     }
+
+    /**
+     * Fetch movies by genre ID from the API
+     * @param genreId The ID of the genre
+     * @return List of Movie objects filtered by genre
+     */
+    public static List<Movie> getMoviesByGenreId(Long genreId) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/api/movies/by-genre/" + genreId))
+                .header("Content-Type", "application/json")
+                .GET()
+                .build();
+
+        HttpResponse<String> response =
+                client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() / 100 != 2) {
+            throw new IOException("HTTP " + response.statusCode() + ": " + response.body());
+        }
+
+        // Parse JSON response
+        JsonNode root = mapper.readTree(response.body());
+
+        // Check if response is successful
+        boolean success = root.path("success").asBoolean(false);
+        if (!success) {
+            String message = root.path("message").asText("Failed to fetch movies by genre");
+            throw new IOException(message);
+        }
+
+        // Get data array
+        JsonNode dataNode = root.path("data");
+
+        if (dataNode.isMissingNode() || !dataNode.isArray()) {
+            return Collections.emptyList();
+        }
+
+        // Convert JSON to Movie list
+        List<Movie> movies = new ArrayList<>();
+        for (JsonNode movieNode : dataNode) {
+            Movie movie = new Movie();
+            movie.setId(movieNode.path("id").asLong());
+            movie.setTitle(movieNode.path("title").asText());
+            movie.setDescription(movieNode.path("description").asText());
+            movie.setYear(movieNode.path("year").asInt());
+            movie.setDurationMin(movieNode.path("durationMin").asInt());
+            movie.setRating(movieNode.path("rating").asDouble());
+            movie.setVideoUrl(movieNode.path("videoUrl").asText());
+            movie.setPosterUrl(movieNode.path("posterUrl").asText());
+            movie.setBackdropUrl(movieNode.path("backdropUrl").asText());
+
+            // Parse genres
+            List<String> genres = new ArrayList<>();
+            JsonNode genresNode = movieNode.path("genres");
+            if (genresNode.isArray()) {
+                for (JsonNode genreNode : genresNode) {
+                    genres.add(genreNode.asText());
+                }
+            }
+            movie.setGenres(genres);
+
+            // Set placeholder icon, will load async later
+            movie.setPoster(createPlaceholderIcon());
+
+            movies.add(movie);
+        }
+
+        return movies;
+    }
 }
