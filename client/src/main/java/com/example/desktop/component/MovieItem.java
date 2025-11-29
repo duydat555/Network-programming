@@ -2,14 +2,16 @@ package com.example.desktop.component;
 
 import com.example.desktop.api.AuthApiClient;
 import com.example.desktop.api.MovieApi;
+import com.example.desktop.form.MovieDetailForm;
 import com.example.desktop.model.Movie;
+import com.example.desktop.system.AllForms;
+import com.example.desktop.system.FormManager;
 import com.formdev.flatlaf.icons.FlatMenuArrowIcon;
 import net.miginfocom.swing.MigLayout;
 import raven.extras.AvatarIcon;
 import raven.modal.ModalDialog;
 
 import javax.swing.*;
-import java.awt.*;
 
 public class MovieItem extends JButton {
     private final AuthApiClient.Movie movie;
@@ -22,11 +24,8 @@ public class MovieItem extends JButton {
     }
 
     private void init() {
-        // SỬA LỖI Ở ĐÂY: Thêm "aligny top"
-        // Lệnh này buộc TẤT CẢ nội dung (poster, text)
-        // phải được căn lên trên cùng của JButton cha.
         setLayout(new MigLayout(
-                "insets 8, aligny top", // Thêm "aligny top" vào đây
+                "insets 8, aligny top",
                 "[60!][grow,fill]push[]",
                 "[][]"
         ));
@@ -42,7 +41,6 @@ public class MovieItem extends JButton {
         posterLabel.setOpaque(false);
         posterLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        // "top" ở đây để poster căn trên so với 2 dòng text
         add(posterLabel, "cell 0 0 1 2, top");
 
         JLabel titleLabel = new JLabel(movie.title());
@@ -59,14 +57,11 @@ public class MovieItem extends JButton {
 
         add(new JLabel(new FlatMenuArrowIcon()), "cell 2 0 1 2, east");
 
+        // --- SỰ KIỆN CLICK ---
         addActionListener(e -> {
-            System.out.println("Clicked movie: " + movie.title());
             ModalDialog.closeModal("search");
-        });
-    }
 
-    private void loadPoster() {
-        if (movie.posterUrl() != null && !movie.posterUrl().isEmpty()) {
+            // SỬA LẠI ĐOẠN NÀY: Truyền đúng videoUrl và backdropUrl
             Movie movieModel = new Movie(
                     movie.id(),
                     movie.title(),
@@ -74,8 +69,30 @@ public class MovieItem extends JButton {
                     movie.year(),
                     movie.durationMin(),
                     movie.rating(),
-                    null,
-                    null,
+                    movie.videoUrl(),     // Vị trí tham số 7: Truyền Link phim
+                    movie.backdropUrl(),  // Vị trí tham số 8: Truyền Ảnh nền
+                    movie.posterUrl(),
+                    movie.genres()
+            );
+
+            MovieDetailForm detailForm = (MovieDetailForm) AllForms.getForm(MovieDetailForm.class);
+            detailForm.bindMovie(movieModel);
+            FormManager.showForm(detailForm);
+        });
+    }
+
+    private void loadPoster() {
+        if (movie.posterUrl() != null && !movie.posterUrl().isEmpty()) {
+            // SỬA LẠI ĐOẠN NÀY CHO ĐỒNG BỘ
+            Movie movieModel = new Movie(
+                    movie.id(),
+                    movie.title(),
+                    movie.description(),
+                    movie.year(),
+                    movie.durationMin(),
+                    movie.rating(),
+                    movie.videoUrl(),    // Link phim
+                    movie.backdropUrl(), // Ảnh nền
                     movie.posterUrl(),
                     movie.genres()
             );
