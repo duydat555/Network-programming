@@ -81,16 +81,22 @@ public class MovieServiceImpl implements MovieService {
     }
 
     @Override
-    public List<MovieDto> getMoviesByGenreId(Long genreId) {
+    public BaseResponse<List<MovieDto>> getMoviesByGenreId(Long genreId) {
         Genre genre = genreRepository.findById(genreId)
                 .orElseThrow(() -> new RuntimeException("Genre not found"));
 
-        // dùng mappedBy = "genres" ở Genre
-        return genre.getMovies()
+        List<MovieDto> movieList = genre.getMovies()
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+
+        return BaseResponse.<List<MovieDto>>builder()
+                .success(true)
+                .message("Lấy danh sách phim theo thể loại thành công")
+                .data(movieList)
+                .build();
     }
+
 
     @Override
     public BaseResponse<List<MovieDto>> searchMovies(String keyword) {

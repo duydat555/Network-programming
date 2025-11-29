@@ -32,9 +32,10 @@ public class MovieController {
     }
 
     @GetMapping("/by-genre/{genreId}")
-    public List<MovieDto> getByGenre(@PathVariable Long genreId) {
+    public BaseResponse<List<MovieDto>> getByGenre(@PathVariable Long genreId) {
         return movieService.getMoviesByGenreId(genreId);
     }
+
 
     @GetMapping("/search")
     public BaseResponse<List<MovieDto>> searchMovies(@RequestParam String keyword) {

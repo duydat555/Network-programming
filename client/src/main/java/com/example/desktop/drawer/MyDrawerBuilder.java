@@ -3,6 +3,12 @@ package com.example.desktop.drawer;
 import com.example.desktop.api.AuthApiClient;
 import com.example.desktop.form.Dashboard;
 import com.example.desktop.form.FavoritesForm;
+import com.example.desktop.form.ActionGenreForm;
+import com.example.desktop.form.AnimationGenreForm;
+import com.example.desktop.form.HorrorGenreForm;
+import com.example.desktop.form.HistoryGenreForm;
+import com.example.desktop.form.RomanceGenreForm;
+import com.example.desktop.form.SciFiGenreForm;
 import com.example.desktop.system.Form;
 import com.example.desktop.system.UserSession;
 import com.formdev.flatlaf.FlatClientProperties;
@@ -114,12 +120,12 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
         MenuItem items[] = new MenuItem[]{
                 new Item("Trang chủ", "house.svg", Dashboard.class),
                 new Item("Thể loại", "list.svg")
-                        .subMenu("Hành động")
-                        .subMenu("Hoạt hình")
-                        .subMenu("Kinh dị")
-                        .subMenu("Lịch sử")
-                        .subMenu("Tình cảm")
-                        .subMenu("Viễn tưởng"),
+                        .subMenu("Hành động", ActionGenreForm.class)
+                        .subMenu("Hoạt hình", AnimationGenreForm.class)
+                        .subMenu("Kinh dị", HorrorGenreForm.class)
+                        .subMenu("Lịch sử", HistoryGenreForm.class)
+                        .subMenu("Tình cảm", RomanceGenreForm.class)
+                        .subMenu("Viễn tưởng", SciFiGenreForm.class),
                 new Item("Quốc gia", "map-pinned.svg")
                         .subMenu("Việt Nam")
                         .subMenu("Hàn Quốc"),

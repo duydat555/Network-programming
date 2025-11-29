@@ -19,7 +19,7 @@ import java.util.Collections;
 
 public class AuthApiClient {
 
-    private static final String BASE_URL = "http://192.168.12.197:8080";
+    private static final String BASE_URL = "http://192.168.1.7:8080";
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final HttpClient client = HttpClient.newHttpClient();
 

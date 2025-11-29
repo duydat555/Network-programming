@@ -123,3 +123,6 @@ public class HlsController {
         return MediaType.APPLICATION_OCTET_STREAM;
     }
 }
+
+
+
