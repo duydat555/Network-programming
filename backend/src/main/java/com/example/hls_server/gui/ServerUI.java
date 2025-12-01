@@ -203,6 +203,7 @@ public class ServerUI extends JFrame {
                 if (client.getIpAddress().equals(ipAddress)) {
                     StringBuilder details = new StringBuilder();
                     details.append("Địa chỉ IP: ").append(client.getIpAddress()).append("\n");
+                    details.append("Chất lượng: ").append(client.getCurrentQuality()).append("\n");
                     details.append("Tổng Request: ").append(client.getTotalRequests()).append("\n");
                     details.append("Hoạt động cuối: ").append(client.getLastActivity().format(timeFormatter)).append("\n");
                     details.append("Thời gian không hoạt động: ").append(client.getInactiveSeconds()).append(" giây\n");

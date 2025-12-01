@@ -34,8 +34,9 @@ public class HlsController {
         activeClients.put(clientIp, System.currentTimeMillis());
         cleanupInactiveClients();
 
-        // Track with ClientMonitor
-        clientMonitor.trackClient(clientIp, file);
+        // Track with ClientMonitor - include folder path for quality detection
+        String segmentPath = folder + "/" + file;
+        clientMonitor.trackClient(clientIp, segmentPath);
 
         int currentCount = activeClients.size();
         if (currentCount != lastClientCount || !printedClients.contains(clientIp)) {
