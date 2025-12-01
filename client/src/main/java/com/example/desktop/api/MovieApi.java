@@ -24,7 +24,7 @@ import java.util.Map;
 
 public class MovieApi {
 
-    private static final String BASE_URL = "http://192.168.1.7:8080";
+    private static final String BASE_URL = "http://192.168.83.92:8080";
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final HttpClient client = HttpClient.newHttpClient();
 
@@ -80,7 +80,22 @@ public class MovieApi {
             movie.setYear(movieNode.path("year").asInt());
             movie.setDurationMin(movieNode.path("durationMin").asInt());
             movie.setRating(movieNode.path("rating").asDouble());
-            movie.setVideoUrl(movieNode.path("videoUrl").asText());
+
+            // --- ĐOẠN SỬA 1: Parse VideoQualities thành List<Movie.VideoQuality> ---
+            List<Movie.VideoQuality> qualities = new ArrayList<>();
+            JsonNode videoNode = movieNode.path("videoQualities");
+            if (videoNode.isArray()) {
+                for (JsonNode v : videoNode) {
+                    Movie.VideoQuality vq = new Movie.VideoQuality();
+                    vq.setQuality(v.path("quality").asText("Unknown"));
+                    vq.setVideoUrl(v.path("videoUrl").asText(""));
+                    vq.setDefault(v.path("isDefault").asBoolean(false));
+                    qualities.add(vq);
+                }
+            }
+            movie.setVideoQualities(qualities);
+            // -----------------------------------------------------------------------
+
             movie.setPosterUrl(movieNode.path("posterUrl").asText());
             movie.setBackdropUrl(movieNode.path("backdropUrl").asText());
 
@@ -119,7 +134,7 @@ public class MovieApi {
         }
 
         try {
-            System.out.println("Đang tải ảnh từ: " + imageUrl);
+            // System.out.println("Đang tải ảnh từ: " + imageUrl); // Comment bớt log cho đỡ rối
 
             // Tạo URL connection với timeout
             URL url = URI.create(imageUrl).toURL();
@@ -139,15 +154,11 @@ public class MovieApi {
 
                     // Lưu vào cache
                     imageCache.put(imageUrl, icon);
-
-                    System.out.println("Đã tải thành công ảnh: " + imageUrl);
                     return icon;
                 }
             }
         } catch (Exception e) {
-            System.err.println("Lỗi khi tải ảnh từ: " + imageUrl);
-            System.err.println("Chi tiết lỗi: " + e.getMessage());
-            e.printStackTrace();
+            // System.err.println("Lỗi khi tải ảnh từ: " + imageUrl);
         }
 
         // Nếu tải thất bại, trả về placeholder
@@ -213,7 +224,22 @@ public class MovieApi {
         movie.setDescription(dataNode.path("description").asText());
         movie.setYear(dataNode.path("year").asInt());
         movie.setDurationMin(dataNode.path("durationMin").asInt());
-        movie.setVideoUrl(dataNode.path("videoUrl").asText());
+
+        // --- ĐOẠN SỬA 2: Parse VideoQualities thành List<Movie.VideoQuality> ---
+        List<Movie.VideoQuality> qualities = new ArrayList<>();
+        JsonNode videoNode = dataNode.path("videoQualities");
+        if (videoNode.isArray()) {
+            for (JsonNode v : videoNode) {
+                Movie.VideoQuality vq = new Movie.VideoQuality();
+                vq.setQuality(v.path("quality").asText("Unknown"));
+                vq.setVideoUrl(v.path("videoUrl").asText(""));
+                vq.setDefault(v.path("isDefault").asBoolean(false));
+                qualities.add(vq);
+            }
+        }
+        movie.setVideoQualities(qualities);
+        // -----------------------------------------------------------------------
+
         movie.setPosterUrl(dataNode.path("posterUrl").asText());
 
         List<String> genres = new ArrayList<>();
@@ -263,7 +289,6 @@ public class MovieApi {
                         SwingUtilities.invokeLater(onComplete);
                     }
                 } catch (Exception e) {
-                    System.err.println("Lỗi khi tải ảnh async: " + e.getMessage());
                     movie.setPoster(createPlaceholderIcon());
                     if (onComplete != null) {
                         SwingUtilities.invokeLater(onComplete);
@@ -320,7 +345,22 @@ public class MovieApi {
             movie.setYear(movieNode.path("year").asInt());
             movie.setDurationMin(movieNode.path("durationMin").asInt());
             movie.setRating(movieNode.path("rating").asDouble());
-            movie.setVideoUrl(movieNode.path("videoUrl").asText());
+
+            // --- ĐOẠN SỬA 3: Parse VideoQualities thành List<Movie.VideoQuality> ---
+            List<Movie.VideoQuality> qualities = new ArrayList<>();
+            JsonNode videoNode = movieNode.path("videoQualities");
+            if (videoNode.isArray()) {
+                for (JsonNode v : videoNode) {
+                    Movie.VideoQuality vq = new Movie.VideoQuality();
+                    vq.setQuality(v.path("quality").asText("Unknown"));
+                    vq.setVideoUrl(v.path("videoUrl").asText(""));
+                    vq.setDefault(v.path("isDefault").asBoolean(false));
+                    qualities.add(vq);
+                }
+            }
+            movie.setVideoQualities(qualities);
+            // -----------------------------------------------------------------------
+
             movie.setPosterUrl(movieNode.path("posterUrl").asText());
             movie.setBackdropUrl(movieNode.path("backdropUrl").asText());
 

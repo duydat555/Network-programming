@@ -8,6 +8,8 @@ import com.example.desktop.model.Movie;
 import com.example.desktop.system.AllForms;
 import com.example.desktop.system.Form;
 import com.example.desktop.system.FormManager;
+// Import VideoPlayerForm để phát video
+import com.example.desktop.form.VideoPlayerForm;
 
 import javax.swing.*;
 import java.awt.*;
@@ -96,16 +98,35 @@ public class Dashboard extends Form {
         MovieDetailForm detailForm = (MovieDetailForm) AllForms.getForm(MovieDetailForm.class);
         detailForm.bindMovie(movie);
         detailForm.setBackgroundUrl(movie.getBackdropUrl());
+
         detailForm.setOnWatchTrailer(m -> JOptionPane.showMessageDialog(
                 FormManager.getFrame(),
                 "Đang mở trailer cho: " + m.getTitle(),
                 "Trailer",
                 JOptionPane.INFORMATION_MESSAGE));
-        detailForm.setOnWatchMovie(m -> JOptionPane.showMessageDialog(
-                FormManager.getFrame(),
-                "Bắt đầu xem phim: " + m.getVideoUrl(),
-                "Xem phim",
-                JOptionPane.INFORMATION_MESSAGE));
+
+        // --- ĐOẠN ĐÃ SỬA LỖI ---
+        detailForm.setOnWatchMovie(m -> {
+            // Kiểm tra danh sách video
+            if (m.getVideoQualities() == null || m.getVideoQualities().isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        FormManager.getFrame(),
+                        "Phim chưa có link video!",
+                        "Lỗi",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
+
+            // Gọi VideoPlayerForm để phát video
+            VideoPlayerForm playerForm = (VideoPlayerForm) AllForms.getForm(VideoPlayerForm.class);
+            // Truyền toàn bộ danh sách chất lượng vào player
+            playerForm.setMovie(m.getTitle(), m.getVideoQualities());
+
+            // Hiển thị form
+            FormManager.showForm(playerForm);
+        });
+        // -----------------------
 
         // Toggle favorite functionality with API integration
         detailForm.setOnToggleFavorite(m -> {
@@ -150,29 +171,29 @@ public class Dashboard extends Form {
 
                         // Show success message
                         String message = currentState ?
-                            "Đã xóa khỏi danh sách yêu thích: " + movie.getTitle() :
-                            "Đã thêm vào danh sách yêu thích: " + movie.getTitle();
+                                "Đã xóa khỏi danh sách yêu thích: " + movie.getTitle() :
+                                "Đã thêm vào danh sách yêu thích: " + movie.getTitle();
 
                         JOptionPane.showMessageDialog(
-                            FormManager.getFrame(),
-                            message,
-                            "Yêu thích",
-                            JOptionPane.INFORMATION_MESSAGE);
+                                FormManager.getFrame(),
+                                message,
+                                "Yêu thích",
+                                JOptionPane.INFORMATION_MESSAGE);
                     } else {
                         // Show error message from API
                         JOptionPane.showMessageDialog(
-                            FormManager.getFrame(),
-                            "Lỗi: " + response.getMessage(),
-                            "Lỗi",
-                            JOptionPane.ERROR_MESSAGE);
+                                FormManager.getFrame(),
+                                "Lỗi: " + response.getMessage(),
+                                "Lỗi",
+                                JOptionPane.ERROR_MESSAGE);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                     JOptionPane.showMessageDialog(
-                        FormManager.getFrame(),
-                        "Lỗi kết nối: " + e.getMessage(),
-                        "Lỗi",
-                        JOptionPane.ERROR_MESSAGE);
+                            FormManager.getFrame(),
+                            "Lỗi kết nối: " + e.getMessage(),
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             }
         };
@@ -207,8 +228,8 @@ public class Dashboard extends Form {
     private void showError(String message) {
         contentPanel.removeAll();
         JLabel errorLabel = new JLabel("<html><div style='text-align: center;'>" +
-                                       message +
-                                       "<br><br>Vui lòng thử lại sau</div></html>");
+                message +
+                "<br><br>Vui lòng thử lại sau</div></html>");
         errorLabel.setFont(errorLabel.getFont().deriveFont(Font.BOLD, 14f));
         errorLabel.setForeground(Color.RED);
         contentPanel.add(errorLabel);

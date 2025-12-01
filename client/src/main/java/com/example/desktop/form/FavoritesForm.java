@@ -1,12 +1,15 @@
 package com.example.desktop.form;
 
 import com.example.desktop.api.FavoriteApi;
+import com.example.desktop.api.MovieApi;
 import com.example.desktop.component.CardMovie;
 import com.example.desktop.layout.WrapLayout;
 import com.example.desktop.model.Movie;
 import com.example.desktop.system.AllForms;
 import com.example.desktop.system.Form;
 import com.example.desktop.system.FormManager;
+// Import thêm VideoPlayerForm để phát video
+import com.example.desktop.form.VideoPlayerForm;
 
 import javax.swing.*;
 import java.awt.*;
@@ -138,10 +141,12 @@ public class FavoritesForm extends Form {
     }
 
     private Movie fetchFullMovieDetails(Long movieId) {
-        // This method should call MovieApi to get full movie details
-        // For now, we'll return null and you can implement it later
-        // TODO: Implement MovieApi.getMovieById(movieId)
-        return null;
+        try {
+            return MovieApi.getMovieById(movieId);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private void showMovieDetailForm(Movie movie) {
@@ -155,11 +160,27 @@ public class FavoritesForm extends Form {
                 "Trailer",
                 JOptionPane.INFORMATION_MESSAGE));
 
-        detailForm.setOnWatchMovie(m -> JOptionPane.showMessageDialog(
-                FormManager.getFrame(),
-                "Bắt đầu xem phim: " + m.getVideoUrl(),
-                "Xem phim",
-                JOptionPane.INFORMATION_MESSAGE));
+        // --- ĐOẠN ĐÃ SỬA LỖI ---
+        detailForm.setOnWatchMovie(m -> {
+            // Kiểm tra danh sách video
+            if (m.getVideoQualities() == null || m.getVideoQualities().isEmpty()) {
+                JOptionPane.showMessageDialog(
+                        FormManager.getFrame(),
+                        "Phim chưa có link video!",
+                        "Lỗi",
+                        JOptionPane.ERROR_MESSAGE
+                );
+                return;
+            }
+
+            // Gọi VideoPlayerForm và truyền danh sách chất lượng
+            VideoPlayerForm playerForm = (VideoPlayerForm) AllForms.getForm(VideoPlayerForm.class);
+            playerForm.setMovie(m.getTitle(), m.getVideoQualities()); // Truyền List<VideoQuality>
+
+            // Hiển thị Player
+            FormManager.showForm(playerForm);
+        });
+        // -----------------------
 
         // Toggle favorite functionality with refresh on change
         detailForm.setOnToggleFavorite(m -> {
@@ -196,14 +217,14 @@ public class FavoritesForm extends Form {
                         detailForm.updateFavoriteState(!currentState);
 
                         String message = currentState ?
-                            "Đã xóa khỏi danh sách yêu thích: " + movie.getTitle() :
-                            "Đã thêm vào danh sách yêu thích: " + movie.getTitle();
+                                "Đã xóa khỏi danh sách yêu thích: " + movie.getTitle() :
+                                "Đã thêm vào danh sách yêu thích: " + movie.getTitle();
 
                         JOptionPane.showMessageDialog(
-                            FormManager.getFrame(),
-                            message,
-                            "Yêu thích",
-                            JOptionPane.INFORMATION_MESSAGE);
+                                FormManager.getFrame(),
+                                message,
+                                "Yêu thích",
+                                JOptionPane.INFORMATION_MESSAGE);
 
                         // Refresh the favorites list after removing
                         if (currentState) {
@@ -211,18 +232,18 @@ public class FavoritesForm extends Form {
                         }
                     } else {
                         JOptionPane.showMessageDialog(
-                            FormManager.getFrame(),
-                            "Lỗi: " + response.getMessage(),
-                            "Lỗi",
-                            JOptionPane.ERROR_MESSAGE);
+                                FormManager.getFrame(),
+                                "Lỗi: " + response.getMessage(),
+                                "Lỗi",
+                                JOptionPane.ERROR_MESSAGE);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                     JOptionPane.showMessageDialog(
-                        FormManager.getFrame(),
-                        "Lỗi kết nối: " + e.getMessage(),
-                        "Lỗi",
-                        JOptionPane.ERROR_MESSAGE);
+                            FormManager.getFrame(),
+                            "Lỗi kết nối: " + e.getMessage(),
+                            "Lỗi",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             }
         };
@@ -269,4 +290,3 @@ public class FavoritesForm extends Form {
         loadFavorites();
     }
 }
-

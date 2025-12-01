@@ -3,6 +3,7 @@ package com.example.desktop.api;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature; // Import thêm để cấu hình mapper
 
 import java.io.IOException;
 import java.net.URI;
@@ -15,14 +16,19 @@ import java.util.List;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.io.UnsupportedEncodingException;
-import java.util.Collections;
 
 public class AuthApiClient {
 
-    private static final String BASE_URL = "http://192.168.1.7:8080";
-    private static final ObjectMapper mapper = new ObjectMapper();
+    // Kiểm tra lại IP này xem có đúng server của bạn không
+    private static final String BASE_URL = "http://192.168.83.92:8080";
+
+    // Cấu hình ObjectMapper để không lỗi nếu JSON có trường thừa mà Java chưa khai báo
+    private static final ObjectMapper mapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
     private static final HttpClient client = HttpClient.newHttpClient();
 
+    // --- (Giữ nguyên các hàm register, login, escapeJson) ---
 
     public static ApiResult register(String username, String email, String password) {
         try {
@@ -112,7 +118,6 @@ public class AuthApiClient {
         return s == null ? "" : s.replace("\"", "\\\"");
     }
 
-
     public static List<UserInfo> getUsers() throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/api/users"))
@@ -141,6 +146,7 @@ public class AuthApiClient {
         return mapper.convertValue(dataNode, new TypeReference<List<UserInfo>>() {});
     }
 
+    // --- Cập nhật logic lấy phim để khớp với Record VideoQuality ---
     public static List<Movie> getMovies() throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(BASE_URL + "/api/movies"))
@@ -156,9 +162,10 @@ public class AuthApiClient {
         }
 
         JsonNode root = mapper.readTree(response.body());
-
         JsonNode dataNode = root.path("data");
 
+        // Logic cũ của bạn: convert thẳng sang List<Movie>
+        // Jackson sẽ tự động map mảng JSON vào List<VideoQuality>
         if (dataNode.isMissingNode() || !dataNode.isArray()) {
             if(root.isArray()){
                 return mapper.convertValue(root, new TypeReference<List<Movie>>() {});
@@ -169,10 +176,12 @@ public class AuthApiClient {
         return mapper.convertValue(dataNode, new TypeReference<List<Movie>>() {});
     }
 
+    // --- (Giữ nguyên create/update/delete/search nhưng chúng sẽ dùng NewMovie mới) ---
+
     public static boolean createMovie(NewMovie movie) throws IOException, InterruptedException {
         String json = mapper.writeValueAsString(movie);
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + "/api/movies"))
+                .uri(URI.create(BASE_URL + "/api/movies")) // Lưu ý: API tạo mới thường là POST
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
@@ -189,7 +198,7 @@ public class AuthApiClient {
     public static boolean updateMovie(long movieId, NewMovie movie) throws IOException, InterruptedException {
         String json = mapper.writeValueAsString(movie);
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(BASE_URL + "/api/movies/" + movieId))
+                .uri(URI.create(BASE_URL + "/api/movies/" + movieId)) // Lưu ý: API sửa thường là PUT
                 .header("Content-Type", "application/json")
                 .PUT(HttpRequest.BodyPublishers.ofString(json))
                 .build();
@@ -218,6 +227,7 @@ public class AuthApiClient {
             throw new IOException("HTTP " + response.statusCode() + ": " + response.body());
         }
     }
+
     public static List<Movie> searchMovies(String keyword) throws IOException, InterruptedException {
         String encodedKeyword;
         try {
@@ -255,31 +265,46 @@ public class AuthApiClient {
         return mapper.convertValue(dataNode, new TypeReference<List<Movie>>() {});
     }
 
+    // =========================================================================
+    // PHẦN CẦN SỬA ĐỔI CHÍNH LÀ Ở ĐÂY
+    // =========================================================================
+
     public record ApiResult(boolean success, String message) {}
 
     public record UserInfo(long id, String username, String email, String role) {}
 
     public record LoginResult(boolean success, String message, UserInfo user) {}
 
+    // 1. Thêm Record VideoQuality để hứng dữ liệu JSON object trong mảng
+    public record VideoQuality(
+            int id,
+            String quality,
+            String videoUrl,
+            boolean isDefault
+    ) {}
+
+    // 2. Sửa Record Movie: videoQualities đổi thành List<VideoQuality>
     public record Movie(
-            long id,
+            int id,
             String title,
             String description,
             int year,
             int durationMin,
             double rating,
-            String videoUrl,
+            List<VideoQuality> videoQualities, // <-- Đã sửa: dùng List Object thay vì List String
             String backdropUrl,
             String posterUrl,
             List<String> genres
     ) {}
 
+    // 3. Sửa Record NewMovie: videoQualities đổi thành String
+    // Lý do: MovieDialog đang gửi lên một link duy nhất (String) khi tạo/sửa
     public record NewMovie(
             String title,
             String description,
             int year,
             int durationMin,
-            String videoUrl,
+            String videoQualities, // <-- Đã sửa: dùng String để khớp với constructor bên MovieDialog
             String backdropUrl,
             String posterUrl,
             List<String> genres

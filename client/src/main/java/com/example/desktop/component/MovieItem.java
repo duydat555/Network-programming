@@ -12,6 +12,9 @@ import raven.extras.AvatarIcon;
 import raven.modal.ModalDialog;
 
 import javax.swing.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class MovieItem extends JButton {
     private final AuthApiClient.Movie movie;
@@ -48,7 +51,7 @@ public class MovieItem extends JButton {
         add(titleLabel, "cell 1 0, wmin 0, wrap");
 
         String subtext = movie.year() + " • " + movie.durationMin() + "m";
-        if (!movie.genres().isEmpty()) {
+        if (movie.genres() != null && !movie.genres().isEmpty()) {
             subtext += " • " + String.join(", ", movie.genres());
         }
         JLabel subtextLabel = new JLabel(subtext);
@@ -61,16 +64,31 @@ public class MovieItem extends JButton {
         addActionListener(e -> {
             ModalDialog.closeModal("search");
 
-            // SỬA LẠI ĐOẠN NÀY: Truyền đúng videoUrl và backdropUrl
+            // --- BƯỚC CHUYỂN ĐỔI DỮ LIỆU (ĐÃ SỬA) ---
+            // Chuyển List<AuthApiClient.VideoQuality> -> List<Movie.VideoQuality>
+            List<Movie.VideoQuality> domainQualities = new ArrayList<>();
+            if (movie.videoQualities() != null) {
+                domainQualities = movie.videoQualities().stream()
+                        .map(apiQ -> {
+                            Movie.VideoQuality domainQ = new Movie.VideoQuality();
+                            domainQ.setQuality(apiQ.quality());
+                            domainQ.setVideoUrl(apiQ.videoUrl());
+                            domainQ.setDefault(apiQ.isDefault());
+                            return domainQ;
+                        })
+                        .collect(Collectors.toList());
+            }
+
+            // Tạo Movie model
             Movie movieModel = new Movie(
-                    movie.id(),
+                    (long) movie.id(),
                     movie.title(),
                     movie.description(),
                     movie.year(),
                     movie.durationMin(),
                     movie.rating(),
-                    movie.videoUrl(),     // Vị trí tham số 7: Truyền Link phim
-                    movie.backdropUrl(),  // Vị trí tham số 8: Truyền Ảnh nền
+                    domainQualities, // Truyền List<VideoQuality>
+                    movie.backdropUrl(),
                     movie.posterUrl(),
                     movie.genres()
             );
@@ -83,16 +101,30 @@ public class MovieItem extends JButton {
 
     private void loadPoster() {
         if (movie.posterUrl() != null && !movie.posterUrl().isEmpty()) {
-            // SỬA LẠI ĐOẠN NÀY CHO ĐỒNG BỘ
+
+            // --- BƯỚC CHUYỂN ĐỔI DỮ LIỆU (Tương tự ở trên) ---
+            List<Movie.VideoQuality> domainQualities = new ArrayList<>();
+            if (movie.videoQualities() != null) {
+                domainQualities = movie.videoQualities().stream()
+                        .map(apiQ -> {
+                            Movie.VideoQuality domainQ = new Movie.VideoQuality();
+                            domainQ.setQuality(apiQ.quality());
+                            domainQ.setVideoUrl(apiQ.videoUrl());
+                            domainQ.setDefault(apiQ.isDefault());
+                            return domainQ;
+                        })
+                        .collect(Collectors.toList());
+            }
+
             Movie movieModel = new Movie(
-                    movie.id(),
+                    (long) movie.id(),
                     movie.title(),
                     movie.description(),
                     movie.year(),
                     movie.durationMin(),
                     movie.rating(),
-                    movie.videoUrl(),    // Link phim
-                    movie.backdropUrl(), // Ảnh nền
+                    domainQualities,
+                    movie.backdropUrl(),
                     movie.posterUrl(),
                     movie.genres()
             );

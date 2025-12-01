@@ -2,7 +2,6 @@ package com.example.desktop.system;
 
 import com.example.desktop.component.FormSearchButton;
 import com.example.desktop.form.MovieDetailForm;
-//import com.example.desktop.form.VideoPlayerDialog;
 import com.example.desktop.form.VideoPlayerForm;
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.extras.FlatSVGIcon;
@@ -14,6 +13,7 @@ import raven.modal.demo.icons.SVGIconUIColor;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 
 public class MainForm extends JPanel {
 
@@ -125,20 +125,21 @@ public class MainForm extends JPanel {
             MovieDetailForm detailForm = (MovieDetailForm) form;
 
             detailForm.setOnWatchMovie(movie -> {
-                if (movie.getVideoUrl() == null || movie.getVideoUrl().isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Link phim lỗi!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                // Kiểm tra danh sách null hoặc rỗng
+                if (movie.getVideoQualities() == null || movie.getVideoQualities().isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Link phim lỗi hoặc chưa cập nhật!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
 
-                // BƯỚC 1: Lấy Instance VideoPlayerForm từ AllForms (hoặc cơ chế Singleton của bạn)
-                // Giả định bạn đang dùng AllForms để quản lý Form Singleton
+                // BƯỚC 1: Lấy Instance VideoPlayerForm
                 VideoPlayerForm playerForm = (VideoPlayerForm) AllForms.getForm(VideoPlayerForm.class);
 
-                // BƯỚC 2: CẬP NHẬT thông tin phim cho Instance đã có
-                // Hàm setMovie này là phương thức đã được thêm vào trong VideoPlayerForm ở câu trả lời trước
-                playerForm.setMovie(movie.getTitle(), movie.getVideoUrl());
+                // BƯỚC 2: CẬP NHẬT thông tin phim
+                // --- SỬA LỖI TẠI ĐÂY ---
+                // Truyền toàn bộ List<VideoQuality> sang playerForm để nó tạo menu chọn chất lượng
+                playerForm.setMovie(movie.getTitle(), movie.getVideoQualities());
 
-                // BƯỚC 3: HIỂN THỊ Form (FormManager sẽ gọi formOpen() để load video mới)
+                // BƯỚC 3: HIỂN THỊ Form
                 FormManager.showForm(playerForm);
             });
         }

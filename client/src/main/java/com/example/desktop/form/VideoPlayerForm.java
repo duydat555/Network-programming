@@ -1,5 +1,6 @@
 package com.example.desktop.form;
 
+import com.example.desktop.model.Movie;
 import com.example.desktop.system.Form;
 import javafx.application.Platform;
 import javafx.concurrent.Worker;
@@ -14,72 +15,50 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
+import java.util.List;
 
 public class VideoPlayerForm extends Form {
 
     private final JFXPanel jfxPanel = new JFXPanel();
 
-    // Khởi tạo chuỗi rỗng để tránh NullPointerException
-    private String videoUrl = "";
     private String movieTitle = "";
+    // Thay đổi: Lưu danh sách chất lượng thay vì 1 URL duy nhất
+    private List<Movie.VideoQuality> qualities = new ArrayList<>();
 
     private WebView webView;
     private WebEngine engine;
 
-    // --- BIẾN XỬ LÍ FULLSCREEN ---
     private boolean isFullscreen = false;
     private JWindow fullScreenWindow;
     private JFXPanel fullScreenJFXPanel;
     private WebView fullScreenWebView;
     private WebEngine fullScreenEngine;
 
-    // --- BIẾN LƯU TRẠNG THÁI VIDEO ---
-    private double savedCurrentTime = 0;
-
-    // =================================================================
-    // 1. CONSTRUCTOR RỖNG (BẮT BUỘC ĐỂ SỬA LỖI NOSUCHMETHODEXCEPTION)
-    // =================================================================
     public VideoPlayerForm() {
-        init();
-    }
-
-    // Constructor có tham số (giữ lại để dùng nếu cần thiết)
-    public VideoPlayerForm(String movieTitle, String videoUrl) {
-        this.movieTitle = movieTitle;
-        this.videoUrl = videoUrl;
         init();
     }
 
     private void init() {
         setLayout(new BorderLayout());
         setBackground(java.awt.Color.BLACK);
-        // Add JFXPanel một lần duy nhất tại đây
         add(jfxPanel, BorderLayout.CENTER);
-
-        // Tắt tính năng tự động tắt của JavaFX khi đóng cửa sổ cuối cùng
         Platform.setImplicitExit(false);
-
         Platform.runLater(this::initFX);
     }
 
     private void initFX() {
         webView = new WebView();
         webView.setContextMenuEnabled(false);
-        // Tạo Scene với nền đen
         Scene scene = new Scene(webView, Color.BLACK);
         jfxPanel.setScene(scene);
         engine = webView.getEngine();
         setupEngine(engine, false);
     }
 
-    /**
-     * Phương thức này được FormManager gọi khi Form hiển thị.
-     * Đây là nơi an toàn nhất để bắt đầu phát video.
-     */
     @Override
     public void formOpen() {
         super.formOpen();
-        // Luôn reload lại player khi form mở ra
         Platform.runLater(() -> {
             if (engine != null) {
                 loadCustomPlayer(engine);
@@ -88,17 +67,27 @@ public class VideoPlayerForm extends Form {
     }
 
     /**
-     * 2. PHƯƠNG THỨC CẬP NHẬT VIDEO MỚI (QUAN TRỌNG KHI TÁI SỬ DỤNG FORM)
+     * Set movie với danh sách các chất lượng video
      */
-    public void setMovie(String title, String url) {
+    public void setMovie(String title, List<Movie.VideoQuality> videoQualities) {
         this.movieTitle = title;
-        this.videoUrl = url;
-        this.savedCurrentTime = 0; // Reset thời gian
+        this.qualities = videoQualities;
+        if (this.qualities == null) {
+            this.qualities = new ArrayList<>();
+        }
+    }
+
+    /**
+     * Hỗ trợ tương thích ngược (nếu chỉ truyền 1 url)
+     */
+    public void setMovie(String title, String singleUrl) {
+        this.movieTitle = title;
+        this.qualities = new ArrayList<>();
+        this.qualities.add(new Movie.VideoQuality("Mặc định", singleUrl));
     }
 
     @Override
     public void removeNotify() {
-        // Khi rời khỏi form (Back/Home), dừng video để giải phóng tài nguyên
         if (isFullscreen) exitFullscreen();
         stopVideo();
         super.removeNotify();
@@ -107,15 +96,10 @@ public class VideoPlayerForm extends Form {
     private void stopVideo() {
         Platform.runLater(() -> {
             if (engine != null) {
-                // Load null để dừng video và xóa khỏi bộ nhớ RAM
                 engine.load(null);
             }
         });
     }
-
-    // =================================================================
-    // ENGINE SETUP & FULLSCREEN
-    // =================================================================
 
     private void setupEngine(WebEngine eng, boolean isFullScreenEngine) {
         eng.setPromptHandler((PromptData param) -> {
@@ -134,22 +118,28 @@ public class VideoPlayerForm extends Form {
     private void enterFullscreen() {
         Window windowAncestor = SwingUtilities.getWindowAncestor(this);
         Frame parentFrame = (windowAncestor instanceof Frame) ? (Frame) windowAncestor : null;
-
         isFullscreen = true;
 
         Platform.runLater(() -> {
             double currentTime = 0;
             boolean isPaused = true;
+            String currentQualityUrl = ""; // Lưu url đang phát
+
             try {
                 Object timeObj = engine.executeScript("video.currentTime");
                 Object pausedObj = engine.executeScript("video.paused");
+                Object srcObj = engine.executeScript("currentSrc"); // Lấy src hiện tại
+
                 if (timeObj instanceof Number) currentTime = ((Number) timeObj).doubleValue();
                 if (pausedObj instanceof Boolean) isPaused = (Boolean) pausedObj;
+                if (srcObj instanceof String) currentQualityUrl = (String) srcObj;
+
                 engine.executeScript("video.pause()");
             } catch (Exception e) { e.printStackTrace(); }
 
             final double startAt = currentTime;
             final boolean shouldPlay = !isPaused;
+            final String startUrl = currentQualityUrl;
 
             SwingUtilities.invokeLater(() -> {
                 fullScreenJFXPanel = new JFXPanel();
@@ -184,6 +174,10 @@ public class VideoPlayerForm extends Form {
                                     Thread.sleep(500);
                                     Platform.runLater(() -> {
                                         if (fullScreenEngine == null) return;
+                                        // Khôi phục đúng video url và thời gian
+                                        if (!startUrl.isEmpty()) {
+                                            fullScreenEngine.executeScript("changeQualityByUrl('" + startUrl + "')");
+                                        }
                                         fullScreenEngine.executeScript("video.currentTime = " + startAt);
                                         if (shouldPlay) {
                                             fullScreenEngine.executeScript("video.addEventListener('seeked', function() { video.play(); }, {once:true});");
@@ -194,7 +188,6 @@ public class VideoPlayerForm extends Form {
                         }
                     });
                 });
-
                 fullScreenWindow.setVisible(true);
                 fullScreenWindow.toFront();
             });
@@ -210,15 +203,21 @@ public class VideoPlayerForm extends Form {
         Platform.runLater(() -> {
             double currentTime = 0;
             boolean isPaused = true;
+            String currentQualityUrl = "";
+
             try {
                 Object timeObj = fullScreenEngine.executeScript("video.currentTime");
                 Object pausedObj = fullScreenEngine.executeScript("video.paused");
+                Object srcObj = fullScreenEngine.executeScript("currentSrc");
+
                 if (timeObj instanceof Number) currentTime = ((Number) timeObj).doubleValue();
                 if (pausedObj instanceof Boolean) isPaused = (Boolean) pausedObj;
+                if (srcObj instanceof String) currentQualityUrl = (String) srcObj;
             } catch (Exception e) { e.printStackTrace(); }
 
             final double syncTime = currentTime;
             final boolean shouldPlay = !isPaused;
+            final String syncUrl = currentQualityUrl;
 
             SwingUtilities.invokeLater(() -> {
                 if (fullScreenWindow != null) {
@@ -237,27 +236,34 @@ public class VideoPlayerForm extends Form {
                 fullScreenJFXPanel = null;
 
                 if (engine != null) {
-                    loadCustomPlayer(engine); // Reload lại player nhỏ
-                    // Sync time sau khi reload xong
-                    engine.getLoadWorker().stateProperty().addListener((obs, o, n) -> {
-                        if (n == Worker.State.SUCCEEDED) {
-                            Platform.runLater(() -> {
-                                try {
-                                    engine.executeScript("video.currentTime = " + syncTime);
-                                    if (shouldPlay) engine.executeScript("video.play()");
-                                } catch (Exception ignored){}
-                            });
+                    // Sync lại trạng thái về màn hình nhỏ
+                    try {
+                        if (!syncUrl.isEmpty()) {
+                            engine.executeScript("changeQualityByUrl('" + syncUrl + "')");
                         }
-                    });
+                        engine.executeScript("video.currentTime = " + syncTime);
+                        if (shouldPlay) engine.executeScript("video.play()");
+                    } catch (Exception ignored){}
                 }
             });
         });
     }
 
-    // =================================================================
-    // HTML PLAYER LOADER
-    // =================================================================
+    private String buildQualitiesJson() {
+        if (qualities.isEmpty()) return "[]";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < qualities.size(); i++) {
+            Movie.VideoQuality q = qualities.get(i);
+            sb.append(String.format("{\"quality\":\"%s\", \"url\":\"%s\"}", q.getQuality(), q.getVideoUrl()));
+            if (i < qualities.size() - 1) sb.append(",");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
     private void loadCustomPlayer(WebEngine engine) {
+        String qualitiesJson = buildQualitiesJson();
+
         String htmlContent = """
             <html>
             <head>
@@ -295,6 +301,35 @@ public class VideoPlayerForm extends Form {
                     
                     .volume-group { display: flex; align-items: center; gap: 10px; width: 130px; }
                     #volume-slider { height: 4px; }
+                    
+                    /* Quality Menu Styles */
+                    .settings-container { position: relative; }
+                    .quality-menu { 
+                        position: absolute; 
+                        bottom: 40px; 
+                        right: 0; 
+                        background: rgba(20, 20, 20, 0.95); 
+                        border-radius: 8px; 
+                        padding: 5px 0; 
+                        min-width: 120px; 
+                        display: none; 
+                        flex-direction: column;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                        backdrop-filter: blur(5px);
+                    }
+                    .quality-menu.show { display: flex; }
+                    .quality-item {
+                        padding: 8px 15px;
+                        color: #ccc;
+                        font-size: 14px;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                        text-align: left;
+                    }
+                    .quality-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+                    .quality-item.active { color: #3498db; font-weight: bold; }
+                    .quality-item.active::before { content: '✓ '; }
+
                 </style>
             </head>
             <body>
@@ -318,6 +353,11 @@ public class VideoPlayerForm extends Form {
                                 </div>
                             </div>
                             <div class="right-controls">
+                                <div class="settings-container">
+                                    <button class="btn" onclick="toggleQualityMenu()"><i class="fas fa-cog"></i></button>
+                                    <div id="quality-menu" class="quality-menu">
+                                        </div>
+                                </div>
                                 <button class="btn" onclick="callJavaFullscreen()"><i class="fas fa-expand"></i></button>
                             </div>
                         </div>
@@ -326,33 +366,85 @@ public class VideoPlayerForm extends Form {
 
                 <script>
                     var video = document.getElementById('video');
-                    var videoSrc = '__VIDEO_URL__';
+                    var qualities = __QUALITIES_JSON__; // Inject JSON here
+                    var currentSrc = "";
+                    var hls = null;
+                    
                     var playIcon = document.getElementById('play-icon');
                     var seekBar = document.getElementById('seek-bar');
                     var volSlider = document.getElementById('volume-slider');
                     var container = document.getElementById('player-container');
                     var currentTimeLabel = document.getElementById('current-time');
                     var durationLabel = document.getElementById('duration');
+                    var qualityMenu = document.getElementById('quality-menu');
                     var hideTimer;
 
-                    if (Hls.isSupported()) {
-                        var hls = new Hls({
-                            maxBufferLength: 30,
-                            maxBufferSize: 60 * 1000 * 1000,
-                        });
-                        hls.loadSource(videoSrc);
-                        hls.attachMedia(video);
-                        // Start playing when manifest is parsed
-                        hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                           video.play();
-                        });
-                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                        video.src = videoSrc;
-                        video.addEventListener('loadedmetadata', function() {
-                           video.play();
+                    // Init Load
+                    if(qualities.length > 0) {
+                        loadSource(qualities[0].url);
+                        renderQualities();
+                    }
+
+                    function loadSource(url) {
+                        currentSrc = url;
+                        var currentTime = video.currentTime;
+                        var isPlaying = !video.paused;
+
+                        if (Hls.isSupported()) {
+                            if(hls) { hls.destroy(); }
+                            hls = new Hls();
+                            hls.loadSource(url);
+                            hls.attachMedia(video);
+                            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                               video.currentTime = currentTime;
+                               if(isPlaying) video.play();
+                            });
+                        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                            video.src = url;
+                            video.currentTime = currentTime;
+                            video.addEventListener('loadedmetadata', function() {
+                               if(isPlaying) video.play();
+                            }, {once:true});
+                        }
+                        updateActiveQualityUI(url);
+                    }
+
+                    function renderQualities() {
+                        qualityMenu.innerHTML = '';
+                        qualities.forEach(q => {
+                            var div = document.createElement('div');
+                            div.className = 'quality-item ' + (q.url === currentSrc ? 'active' : '');
+                            div.innerText = q.quality;
+                            div.onclick = function() { 
+                                loadSource(q.url); 
+                                toggleQualityMenu();
+                            };
+                            qualityMenu.appendChild(div);
                         });
                     }
+
+                    function updateActiveQualityUI(url) {
+                        var items = document.getElementsByClassName('quality-item');
+                        for(var i=0; i<items.length; i++) {
+                            items[i].className = 'quality-item';
+                            if(qualities[i].url === url) items[i].className += ' active';
+                        }
+                    }
                     
+                    // Gọi từ Java để sync quality
+                    function changeQualityByUrl(url) {
+                        loadSource(url);
+                    }
+
+                    function toggleQualityMenu() {
+                        if (qualityMenu.classList.contains('show')) {
+                            qualityMenu.classList.remove('show');
+                        } else {
+                            qualityMenu.classList.add('show');
+                        }
+                    }
+
+                    // --- STANDARD CONTROLS (Giữ nguyên) ---
                     function togglePlay() {
                         if (video.paused) video.play();
                         else video.pause();
@@ -366,11 +458,6 @@ public class VideoPlayerForm extends Form {
                     
                     video.addEventListener('pause', function() {
                         playIcon.className = 'fas fa-play';
-                        container.classList.remove('hide-controls');
-                    });
-
-                    video.addEventListener('ended', function() {
-                        playIcon.className = 'fas fa-rotate-right';
                         container.classList.remove('hide-controls');
                     });
 
@@ -421,8 +508,7 @@ public class VideoPlayerForm extends Form {
                         if(isNaN(seconds)) return "00:00:00";
                         var date = new Date(0);
                         date.setSeconds(seconds);
-                        var timeString = date.toISOString().substr(11, 8);
-                        return timeString; 
+                        return date.toISOString().substr(11, 8);
                     }
 
                     function updateSliderBackground(el, val, max) {
@@ -434,6 +520,7 @@ public class VideoPlayerForm extends Form {
                         clearTimeout(hideTimer);
                         hideTimer = setTimeout(() => {
                             if(!video.paused) container.classList.add('hide-controls');
+                            qualityMenu.classList.remove('show'); // Ẩn menu khi ẩn controls
                         }, 3000);
                     }
 
@@ -449,7 +536,7 @@ public class VideoPlayerForm extends Form {
             """;
 
         String finalHtml = htmlContent
-                .replace("__VIDEO_URL__", videoUrl)
+                .replace("__QUALITIES_JSON__", qualitiesJson)
                 .replace("__MOVIE_TITLE__", movieTitle);
 
         engine.loadContent(finalHtml);

@@ -26,7 +26,7 @@ public class CardMovie extends JPanel {
     private void init() {
         putClientProperty(FlatClientProperties.STYLE,
                 "arc:30;" +
-                "border:10,10,10,10,#a9a9a9");
+                        "border:10,10,10,10,#a9a9a9");
         setBackground(new Color(234, 234, 234));
         setLayout(new MigLayout("", "", "fill"));
 
@@ -56,7 +56,8 @@ public class CardMovie extends JPanel {
         body.putClientProperty(FlatClientProperties.STYLE,
                 "background:null");
 
-        JLabel lblTitle = new JLabel(movie.getName());
+        // --- SỬA LỖI: Dùng getTitle() thay vì getName() ---
+        JLabel lblTitle = new JLabel(movie.getTitle());
         lblTitle.setFont(lblTitle.getFont().deriveFont(Font.BOLD, 14f));
         lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
 
@@ -67,23 +68,25 @@ public class CardMovie extends JPanel {
                 "font:bold +0");
 
         // Tự động cắt text và thêm "..." nếu quá dài
-        String truncated = truncateText(movie.getName(), 160, lblTitle);
+        // --- SỬA LỖI: Dùng getTitle() ---
+        String truncated = truncateText(movie.getTitle(), 160, lblTitle);
         lblTitle.setText(truncated);
 
         // Thêm tooltip để xem full title khi hover
-        if (!truncated.equals(movie.getName())) {
-            lblTitle.setToolTipText(movie.getName());
+        // --- SỬA LỖI: Dùng getTitle() ---
+        if (!truncated.equals(movie.getTitle())) {
+            lblTitle.setToolTipText(movie.getTitle());
         }
 
         JButton button = new JButton("Chi tiết");
         button.addActionListener(_ -> event.accept(movie));
         button.putClientProperty(FlatClientProperties.STYLE,
                 "arc:999;" +
-                "margin:5,30,5,30;" +
-                "borderWidth:1;" +
-                "focusWidth:0;" +
-                "innerFocusWidth:0;" +
-                "background:null;");
+                        "margin:5,30,5,30;" +
+                        "borderWidth:1;" +
+                        "focusWidth:0;" +
+                        "innerFocusWidth:0;" +
+                        "background:null;");
 
         body.add(lblTitle, "wrap,growx,align center,wmax 160");
         body.add(button, "align center");
