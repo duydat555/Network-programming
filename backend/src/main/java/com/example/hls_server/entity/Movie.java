@@ -33,9 +33,6 @@ public class Movie {
     @Column(name = "rating")
     private double rating;
 
-    @Lob
-    @Column(name = "video_url", nullable = false)
-    private String videoUrl;
 
     @Lob
     @Column(name = "poster_url")
@@ -61,4 +58,7 @@ public class Movie {
 
     @OneToMany(mappedBy = "movie")
     private List<Favorite> favorites;
+
+    @OneToMany(mappedBy = "movie", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<VideoQuality> videoQualities;
 }

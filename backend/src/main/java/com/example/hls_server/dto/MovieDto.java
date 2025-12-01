@@ -14,7 +14,7 @@ public class MovieDto {
     private Integer year;
     private Integer durationMin;
     private double rating;
-    private String videoUrl;
+    private List<VideoQualityDto> videoQualities;
     private String posterUrl;
     private String backdropUrl;
     private List<String> genres;

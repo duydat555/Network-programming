@@ -3,8 +3,11 @@ package com.example.hls_server.service.impl;
 import com.example.hls_server.dto.BaseResponse;
 import com.example.hls_server.dto.MovieCreateRequest;
 import com.example.hls_server.dto.MovieDto;
+import com.example.hls_server.dto.VideoQualityDto;
+import com.example.hls_server.dto.VideoQualityCreateRequest;
 import com.example.hls_server.entity.Genre;
 import com.example.hls_server.entity.Movie;
+import com.example.hls_server.entity.VideoQuality;
 import com.example.hls_server.repository.GenreRepository;
 import com.example.hls_server.repository.MovieRepository;
 import com.example.hls_server.service.MovieService;
@@ -40,7 +43,6 @@ public class MovieServiceImpl implements MovieService {
         movie.setYear(request.getYear());
         movie.setDurationMin(request.getDurationMin());
         movie.setRating(request.getRating());
-        movie.setVideoUrl(request.getVideoUrl());
         movie.setPosterUrl(request.getPosterUrl());
         movie.setBackdropUrl(request.getBackdropUrl());
         movie.setCreatedAt(LocalDateTime.now());
@@ -49,6 +51,21 @@ public class MovieServiceImpl implements MovieService {
         if (request.getGenreIds() != null && !request.getGenreIds().isEmpty()) {
             List<Genre> genres = genreRepository.findAllById(request.getGenreIds());
             movie.setGenres(new HashSet<>(genres));
+        }
+
+        // set video qualities
+        if (request.getVideoQualities() != null && !request.getVideoQualities().isEmpty()) {
+            List<VideoQuality> videoQualities = new ArrayList<>();
+            for (VideoQualityCreateRequest qualityRequest : request.getVideoQualities()) {
+                VideoQuality quality = VideoQuality.builder()
+                        .movie(movie)
+                        .quality(qualityRequest.getQuality())
+                        .videoUrl(qualityRequest.getVideoUrl())
+                        .isDefault(qualityRequest.getIsDefault() != null ? qualityRequest.getIsDefault() : false)
+                        .build();
+                videoQualities.add(quality);
+            }
+            movie.setVideoQualities(videoQualities);
         }
 
         Movie saved = movieRepository.save(movie);
@@ -131,6 +148,20 @@ public class MovieServiceImpl implements MovieService {
             }
         }
 
+        // Convert video qualities
+        List<VideoQualityDto> videoQualityDtos = new ArrayList<>();
+        if (movie.getVideoQualities() != null) {
+            for (VideoQuality quality : movie.getVideoQualities()) {
+                VideoQualityDto qualityDto = VideoQualityDto.builder()
+                        .id(quality.getId())
+                        .quality(quality.getQuality())
+                        .videoUrl(quality.getVideoUrl())
+                        .isDefault(quality.getIsDefault())
+                        .build();
+                videoQualityDtos.add(qualityDto);
+            }
+        }
+
         return MovieDto.builder()
                 .id(movie.getId())
                 .title(movie.getTitle())
@@ -138,7 +169,7 @@ public class MovieServiceImpl implements MovieService {
                 .year(movie.getYear())
                 .durationMin(movie.getDurationMin())
                 .rating(movie.getRating())
-                .videoUrl(movie.getVideoUrl())
+                .videoQualities(videoQualityDtos)
                 .posterUrl(movie.getPosterUrl())
                 .backdropUrl(movie.getBackdropUrl())
                 .genres(genreNames)

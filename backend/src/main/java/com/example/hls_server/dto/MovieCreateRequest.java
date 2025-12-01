@@ -17,7 +17,7 @@ public class MovieCreateRequest {
     private Integer year;
     private Integer durationMin;
     private double rating;
-    private String videoUrl;
+    private List<VideoQualityCreateRequest> videoQualities;
     private String posterUrl;
     private String backdropUrl;
     private List<Long> genreIds;
