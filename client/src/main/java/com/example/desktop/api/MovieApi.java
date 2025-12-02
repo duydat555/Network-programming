@@ -24,7 +24,7 @@ import java.util.Map;
 
 public class MovieApi {
 
-    private static final String BASE_URL = "http://192.168.83.92:8080";
+    private static final String BASE_URL = "http://192.168.12.134:8080";
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final HttpClient client = HttpClient.newHttpClient();
 

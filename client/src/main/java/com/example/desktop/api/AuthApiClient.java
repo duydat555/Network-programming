@@ -18,17 +18,12 @@ import java.nio.charset.StandardCharsets;
 import java.io.UnsupportedEncodingException;
 
 public class AuthApiClient {
+    private static final String BASE_URL = "http://192.168.12.134:8080";
 
-    // Kiểm tra lại IP này xem có đúng server của bạn không
-    private static final String BASE_URL = "http://192.168.83.92:8080";
-
-    // Cấu hình ObjectMapper để không lỗi nếu JSON có trường thừa mà Java chưa khai báo
     private static final ObjectMapper mapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private static final HttpClient client = HttpClient.newHttpClient();
-
-    // --- (Giữ nguyên các hàm register, login, escapeJson) ---
 
     public static ApiResult register(String username, String email, String password) {
         try {

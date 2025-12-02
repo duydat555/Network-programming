@@ -84,11 +84,11 @@ public class MovieDetailPanel extends JPanel {
         panel.setOpaque(false);
         panel.setBackground(TRANSPARENT);
 
-        styleOutlineButton(trailerButton);
+        //styleOutlineButton(trailerButton);
         stylePrimaryButton(watchButton);
         styleOutlineButton(favoriteButton);
 
-        panel.add(trailerButton, "growx");
+        //panel.add(trailerButton, "growx");
         panel.add(watchButton, "growx, gapleft 15");
         panel.add(favoriteButton, "growx, gapleft 15");
         return panel;

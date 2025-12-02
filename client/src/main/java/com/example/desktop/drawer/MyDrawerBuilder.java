@@ -126,11 +126,11 @@ public class MyDrawerBuilder extends SimpleDrawerBuilder {
                         .subMenu("Lịch sử", HistoryGenreForm.class)
                         .subMenu("Tình cảm", RomanceGenreForm.class)
                         .subMenu("Viễn tưởng", SciFiGenreForm.class),
-                new Item("Quốc gia", "map-pinned.svg")
-                        .subMenu("Việt Nam")
-                        .subMenu("Hàn Quốc"),
+//                new Item("Quốc gia", "map-pinned.svg")
+//                        .subMenu("Việt Nam")
+//                        .subMenu("Hàn Quốc"),
                 new Item("Danh sách yêu thích", "heart.svg", FavoritesForm.class),
-                new Item("Xem tiếp", "history.svg"),
+//                new Item("Xem tiếp", "history.svg"),
                 new Item("Đăng xuất", "log-out.svg")
         };
 

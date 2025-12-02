@@ -11,6 +11,8 @@ import com.example.hls_server.repository.UserRepository;
 import com.example.hls_server.service.FavoriteService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+// --- THÊM DÒNG NÀY ---
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -63,6 +65,7 @@ public class FavoriteServiceImpl implements FavoriteService {
     }
 
     @Override
+    @Transactional // <--- QUAN TRỌNG: Thêm dòng này để sửa lỗi xóa
     public BaseResponse<String> removeFavorite(Long userId, Long movieId) {
         try {
             if (!favoriteRepository.existsByUserIdAndMovieId(userId, movieId)) {
@@ -73,6 +76,7 @@ public class FavoriteServiceImpl implements FavoriteService {
                         .build();
             }
 
+            // Hàm này bắt buộc phải có @Transactional mới chạy được
             favoriteRepository.deleteByUserIdAndMovieId(userId, movieId);
 
             return BaseResponse.<String>builder()
